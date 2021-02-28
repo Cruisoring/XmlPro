@@ -31,38 +31,5 @@ namespace XmlPro.Test
             tags.ForEach(tag => Console.WriteLine(tag));
         }
 
-        [TestMethod]
-        public void TestGetMultipleAttributes()
-        {
-            char[] chars = "<IMG align=\"left\" src = \"http://www.w3.org/Icons/WWW/w3c_home\" /> ".ToCharArray();
-            XAttribute[] results = XAttribute.AttributesWithin(chars, 4).ToArray();
-            Assert.IsTrue(results.Length == 2
-                          && results[0].ToString() == "align=\"left\""
-                          && results[1].ToString() == "src=\"http://www.w3.org/Icons/WWW/w3c_home\""
-            );
-            Array.ForEach(results, r => Console.WriteLine(r.ToString()));
-        }
-
-        [TestMethod]
-        public void TestAttributesWithSpecialChars()
-        {
-            char[] chars = "<node from=\"&lt;tom@hcc.com&gt;\" amount\u00a5=\"&gt;500\">".ToCharArray();
-            XAttribute[] results = XAttribute.AttributesWithin(chars, 5).ToArray();
-            Assert.IsTrue(results.Length == 2
-                          && results[0].ToString() == "from=\"<tom@hcc.com>\""
-                          && results[1].ToString() == "amount¥=\">500\"");
-            Array.ForEach(results, r => Console.WriteLine(r.ToString()));
-        }
-
-        [TestMethod]
-        public void TestAttributesWithoutValues()
-        {
-            char[] chars = "<node \tfrom  amount\u00a5  >".ToCharArray();
-            XAttribute[] results = XAttribute.AttributesWithin(chars, 5).ToArray();
-            Assert.IsTrue(results.Length == 2
-                          && results[0].ToString() == "from=\"\""
-                          && results[1].ToString() == "amount¥=\"\"");
-            Array.ForEach(results, r => Console.WriteLine(r.ToString()));
-        }
     }
 }

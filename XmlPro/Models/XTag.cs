@@ -153,7 +153,9 @@ namespace XmlPro.Models
 
                     }
 
+                    // index point to one position ahead since it would be increase by one in next loop
                     i = tagEnd-1;
+                    // reset local variables
                     (tagType, tagBegin, tagEnd, closingPos, closing, name) =
                         (TagType.Unknown, -1, -1, -1, ">", "");
                 }

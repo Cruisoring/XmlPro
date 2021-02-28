@@ -87,5 +87,11 @@ namespace XmlPro.Extensions
             return new string(part);
             //*/
         }
+
+        public static void ForEach<T>(this IEnumerable<T> @this, Action<T> action)
+        {
+            foreach (var x in @this)
+                action(x);
+        }
     }
 }

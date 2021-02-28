@@ -7,5 +7,7 @@ namespace XmlPro.Interfaces
     public interface IText
     {
         string RawText { get; }
+
+        string Text { get; }
     }
 }

@@ -11,6 +11,9 @@ namespace XmlPro.Models
 {
     public record StringScope : Scope, IText
     {
+        public static char ToStringIndentChar = ' ';
+        public static int ToStringIndentMultiplier = 2;
+
         public static readonly HashSet<char> WhiteSpaces = new HashSet<char>() {' ', '\n', '\r', '\t'};
 
         public static string Decode(string raw)
@@ -29,6 +32,8 @@ namespace XmlPro.Models
         // protected readonly Cache<string> ValueCache;
 
         public string RawText => this.TextFrom(Context);
+
+        public string Text => Decode(RawText);
 
         public StringScope([NotNull] char[] context, int begin, int end) : base(begin, end)
         {

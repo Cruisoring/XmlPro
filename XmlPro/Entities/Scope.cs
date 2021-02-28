@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using XmlPro.Interfaces;
 
-namespace XmlPro.Models
+namespace XmlPro.Entities
 {
     public record Scope : IScope, IComparable<Scope>
     {

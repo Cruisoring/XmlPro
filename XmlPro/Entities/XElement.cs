@@ -2,17 +2,18 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Text;
 using XmlPro.Enums;
 using XmlPro.Extensions;
 using XmlPro.Interfaces;
 
-namespace XmlPro.Models
+namespace XmlPro.Entities
 {
     public record XElement: StringScope, IContainer, IContained
     {
         public static bool SkipEmptyText = true;
+        public static bool AttributeBestMatch = true;
         public static bool ToStringWithChildrenDetails = false;
 
         public static IEnumerable<IContained> Parse([NotNull] char[] context, int since, int? until = null, IContainer parent=null)
@@ -21,12 +22,18 @@ namespace XmlPro.Models
             List<IContained> children = new List<IContained>();
             Stack<List<IContained>> stack = new Stack<List<IContained>>();
 
+            int lastEnd = since;
             IEnumerable<XTag> tags = XTag.ParseTags(context, since, until);
-            Stack<IContainer> parents = new Stack<IContainer>();
-            parents.Push(parent);
-
             foreach (var tag in tags)
             {
+                if (tag.Begin > lastEnd)
+                {
+                    string text = new string(context, lastEnd, tag.Begin-lastEnd);
+                    if (!SkipEmptyText || text.Trim().Length > 0)
+                    {
+                        children.Add(new XText(context, lastEnd, tag.Begin));
+                    }
+                }
                 switch (tag.Type)
                 {
                     case TagType.Sound:
@@ -62,6 +69,8 @@ namespace XmlPro.Models
                     default:
                         throw new ArgumentException($"Unexpected tag of type {tag.Type}");
                 }
+
+                lastEnd = tag.End;
             }
 
             if (unpaired.Count > 0)
@@ -80,7 +89,7 @@ namespace XmlPro.Models
         public XTag Opening { get; init; }
         public XTag Closing { get; init; }
 
-        public IEnumerable<IContained> Children { get; }
+        public IList<IContained> Children { get; init; }
 
         public Dictionary<string, string> Attributes { get; init; }
 
@@ -108,10 +117,11 @@ namespace XmlPro.Models
                 attr => attr.Name,
                 attr => attr.Value
             );
+            Children = null;
         }
 
         public XElement([NotNull] char[] context, [NotNull] XTag opening, [NotNull] XTag closing,
-            IEnumerable<IContained> children = null) : 
+            IList<IContained> children = null) : 
             base(context, opening.Begin, closing.End)
         {
             Opening = opening;
@@ -141,18 +151,66 @@ namespace XmlPro.Models
             string indent = new string(ToStringIndentChar, indentLevel*ToStringIndentMultiplier);
             if (Type == ElementType.Compound)
             {
-                StringBuilder sb = new StringBuilder();
-                sb.AppendLine($"{indent}{Opening}");
-                if (includeChildren ?? ToStringWithChildrenDetails)
+                if (Children.Any(c => c is XElement))
                 {
-                    Children.ForEach(c => sb.AppendLine(c.ToString(indentLevel + 1, includeChildren)));
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine($"{indent}{Opening}");
+                    if (includeChildren ?? ToStringWithChildrenDetails)
+                    {
+                        Children.ForEach(c => sb.AppendLine(c.ToString(indentLevel + 1, includeChildren)));
+                    }
+                    sb.Append($"{indent}{Closing}");
+                    return sb.ToString();
                 }
-                sb.Append($"{indent}{Closing}");
-                return sb.ToString();
+                else
+                {
+                    return $"{indent}{Opening}{String.Join("", Children.Select(e => e.ToString(0, includeChildren)))}{Closing}";
+                }
             }
             else
             {
                 return $"{indent}{Opening}";
+            }
+        }
+
+        public string this[string attrName]
+        {
+            get
+            {
+                if (Attributes.ContainsKey(attrName))
+                {
+                    return Attributes[attrName];
+                }
+                else if (AttributeBestMatch)
+                {
+                    //TODO: more complex matching like ignoring chars like '_', ' '...
+                    string bestMatchedNamed =
+                        Attributes.Keys.FirstOrDefault(k => k.Equals(attrName, StringComparison.OrdinalIgnoreCase));
+                    return bestMatchedNamed == null ? null : Attributes[bestMatchedNamed];
+                }
+                else
+                {
+                    return null;
+                }
+            }
+        }
+
+        public IContained this[int childIndex]
+        {
+            get
+            {
+                if (Children == null)
+                {
+                    throw new InvalidOperationException($"{Type} Element has no children.");
+                }
+                else if (Children.Count == 0 || childIndex >= Children.Count || childIndex < -Children.Count)
+                {
+                    throw new IndexOutOfRangeException($"Index {childIndex} is out of range with children of {Children.Count}");
+                }
+                else
+                {
+                    return Children[childIndex < 0 ? Children.Count + childIndex : childIndex];
+                }
             }
         }
 

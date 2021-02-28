@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using XmlPro.Extensions;
 using XmlPro.Helpers;
 using XmlPro.Interfaces;
-using XmlPro.Models;
+using XmlPro.Entities;
 
 namespace XmlPro.MSTest
 {

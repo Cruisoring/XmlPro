@@ -11,5 +11,6 @@ namespace XmlPro.Enums
         Simple,
         Compound,
         Declarative,
+        Text,
     }
 }

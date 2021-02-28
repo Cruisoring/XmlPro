@@ -7,7 +7,7 @@ using XmlPro.Extensions;
 using XmlPro.Helpers;
 using XmlPro.Interfaces;
 
-namespace XmlPro.Models
+namespace XmlPro.Entities
 {
     public record StringScope : Scope, IText
     {

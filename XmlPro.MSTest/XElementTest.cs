@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using XmlPro.Extensions;
 using XmlPro.Interfaces;
-using XmlPro.Models;
+using XmlPro.Entities;
 
 namespace XmlPro.MSTest
 {
@@ -17,7 +17,7 @@ namespace XmlPro.MSTest
         [TestMethod]
         public void TestParseSimple()
         {
-            string testData = File.ReadAllText("Data/Zoo.xml");
+            string testData = File.ReadAllText("Data/books.xml");
             IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
             nodes.ForEach(node => Console.WriteLine(node.ToString(0, true)));
         }
@@ -26,6 +26,14 @@ namespace XmlPro.MSTest
         public void TestParseComplex()
         {
             string testData = File.ReadAllText("Data/XML.xml");
+            IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
+            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true)));
+        }
+
+        [TestMethod]
+        public void TestParseComplexHtml()
+        {
+            string testData = File.ReadAllText("Data/XML.html");
             IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
             nodes.ForEach(node => Console.WriteLine(node.ToString(0, true)));
         }

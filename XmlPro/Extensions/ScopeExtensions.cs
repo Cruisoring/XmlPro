@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using XmlPro.Helpers;
 using XmlPro.Interfaces;
-using XmlPro.Models;
+using XmlPro.Entities;
 
 namespace XmlPro.Extensions
 {

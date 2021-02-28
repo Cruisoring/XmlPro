@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-namespace XmlPro.Models
+namespace XmlPro.Entities
 {
     public record XAttribute : StringScope, IComparable<XAttribute>
     {

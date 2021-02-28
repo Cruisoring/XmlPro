@@ -4,7 +4,7 @@ using System.Text;
 
 namespace XmlPro.Models
 {
-    class XmlAttribute
+    public class XDocument
     {
     }
 }

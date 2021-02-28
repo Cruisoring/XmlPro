@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Web;
 using XmlPro.Extensions;
 using XmlPro.Helpers;
 using XmlPro.Interfaces;
@@ -10,19 +11,32 @@ namespace XmlPro.Models
 {
     public record StringScope : Scope, IText
     {
-        public char[] Source { get; init; }
+        public static readonly HashSet<char> WhiteSpaces = new HashSet<char>() {' ', '\n', '\r', '\t'};
 
-        protected readonly Cache<string> ValueCache;
-
-        public string RawText => ValueCache.Value;
-
-        public StringScope([NotNull] char[] source, int begin, int end) : base(begin, end)
+        public static string Decode(string raw)
         {
-            Source = source;
-            ValueCache = new Cache<string>(GetText);
+            return HttpUtility.HtmlDecode(raw);
         }
 
-        protected string GetText() => this.TextFrom(Source);
+        public static string Encode(string value)
+        {
+            return HttpUtility.HtmlEncode(value);
+        }
+
+
+        public char[] Context { get; init; }
+
+        // protected readonly Cache<string> ValueCache;
+
+        public string RawText => this.TextFrom(Context);
+
+        public StringScope([NotNull] char[] context, int begin, int end) : base(begin, end)
+        {
+            Context = context;
+            // ValueCache = new Cache<string>(GetText);
+        }
+
+        // protected string GetText() => this.TextFrom(Context);
 
         public override string ToString() => $"[{Begin}, {End}): {RawText}";
 

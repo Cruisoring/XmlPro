@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ZooRoot>
+  <ZooTable Name="Crazy Zoo" Address="32 Turtle Lane"
+            City="Austin" State="TX" Zip="12345">
+    <Classification Type="Reptiles" />
+    <Classification Type="Birds" />
+    <Classification Type="Primates" />
+  </ZooTable>
+  <ZooTable Name="Chicago Zoo" Address="23 Zebra Ave"
+            City="Chicago" State="IL" >
+    <Classification Type="Fish" />
+    <Classification Type="Mammals" />
+    <Classification Type="Primates" />
+  </ZooTable>
+  <ZooTable Name="Hungry Zoo" Address="45 Lion st"
+            City="Miami" State="FL" Zip="33122" >
+    <Classification Type="Arachnids" />
+    <Classification Type="Rodents" />
+  </ZooTable>
+</ZooRoot>

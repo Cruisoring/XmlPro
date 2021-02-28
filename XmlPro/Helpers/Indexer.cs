@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Text;
 using XmlPro.Interfaces;
 
@@ -27,6 +28,25 @@ namespace XmlPro.Helpers
 
                 if (j == partLength)
                     return i;
+            }
+
+            return -1;
+        }
+
+        public static int IndexOfAny<T>([NotNull] T[] context, [NotNull] T[] options, int startIndex = 0) where T : IComparable<T>
+        {
+            if (options.Length == 0)
+            {
+                return -1;
+            }
+
+            int contextLength = context.Length;
+            for (int i = startIndex; i < contextLength; i++)
+            {
+                if (options.Contains(context[i]))
+                {
+                    return i;
+                }
             }
 
             return -1;

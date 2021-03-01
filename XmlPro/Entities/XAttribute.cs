@@ -13,6 +13,13 @@ namespace XmlPro.Entities
         public const char TagEnd = '>';
         public const char TagClosing = '/';
 
+        /// <summary>
+        /// Generator to iterate the concerned range of the given context to get all XAttributes in forms of `name="value" `, `name='value' ` or `name `.
+        /// </summary>
+        /// <param name="context">Context of the concerned scope to search attributes.</param>
+        /// <param name="since">Start of the scope to search attributes.</param>
+        /// <param name="until">End of the scope to search attributes, end of the context to be used if until is NULL.</param>
+        /// <returns>XAttributes yield for consumption.</returns>
         public static IEnumerable<XAttribute> AttributesWithin([NotNull] char[] context, int since, int? until = null)
         {
             var (nameBegin, nameEnd, equalPosition, valueBegin, valueEnd, valueQuote) =
@@ -119,13 +126,8 @@ namespace XmlPro.Entities
         public string Name { get; init; }
         public string Value { get; init; }
 
-
-        public XAttribute(char[] context, int begin, int end) : base(context, begin, end)
-        {
-        }
-
         public XAttribute(char[] context, int nameBegin, int nameEnd, int? valueBegin, int? valueEnd)
-            : this(context, nameBegin, valueEnd ?? nameEnd)
+            : base(context, nameBegin, valueEnd ?? nameEnd)
         {
             var rawName = new string(context, nameBegin, nameEnd - nameBegin);
             Name = Decode(rawName);
@@ -139,12 +141,12 @@ namespace XmlPro.Entities
 
         public override string ToString()
         {
-            return $"{Name}=\"{Value}\"";
+            return Value==null ? Name : $"{Name}=\"{Value}\"";
         }
 
         public int CompareTo(XAttribute other)
         {
-            return String.Compare(this.Name, other.Name, StringComparison.Ordinal);
+            return string.Compare(this.Name, other.Name, StringComparison.Ordinal);
         }
     }
 }

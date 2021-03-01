@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Text;
 using XmlPro.Helpers;
 using XmlPro.Interfaces;
@@ -86,6 +87,26 @@ namespace XmlPro.Extensions
             Array.Copy(source, scope.Begin, part, 0, scope.Length);
             return new string(part);
             //*/
+        }
+
+        public static string GetText(IList<IText> texts, int? index=null)
+        {
+            if (texts == null)
+            {
+                return null;
+            }
+            else if (index == null)
+            {
+                return String.Join(' ', texts.Select(t => t.Text));
+            }
+            else if (texts.Count == 0 || index >= texts.Count || index < -texts.Count)
+            {
+                throw new IndexOutOfRangeException($"Index {index} is out of range with texts of {texts.Count}");
+            }
+            else
+            {
+                return texts[index.Value < 0 ? texts.Count + index.Value : index.Value].Text;
+            }
         }
 
         public static void ForEach<T>(this IEnumerable<T> @this, Action<T> action)

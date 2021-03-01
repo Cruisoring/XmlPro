@@ -19,7 +19,7 @@ namespace XmlPro.MSTest
         {
             string testData = File.ReadAllText("Data/books.xml");
             IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
-            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true)));
+            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true, true)));
         }
 
         [TestMethod]
@@ -27,7 +27,7 @@ namespace XmlPro.MSTest
         {
             string testData = File.ReadAllText("Data/XML.xml");
             IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
-            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true)));
+            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true, true)));
         }
 
         [TestMethod]
@@ -35,7 +35,7 @@ namespace XmlPro.MSTest
         {
             string testData = File.ReadAllText("Data/XML.html");
             IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
-            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true)));
+            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true, true)));
         }
     }
 }

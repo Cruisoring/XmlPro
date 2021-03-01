@@ -7,12 +7,18 @@ using XmlPro.Enums;
 
 namespace XmlPro.Interfaces
 {
-    public interface IContained : IScope
+    public interface IContained : IScope, IText
     {
+        /// <summary>
+        /// The container of this node.
+        /// </summary>
         public IContainer Parent { get; set; }
 
+        /// <summary>
+        /// Type of this node.
+        /// </summary>
         public ElementType Type { get; }
 
-        public string ToString(int indentLevel, bool? includeChildren = null);
+        public string ToString(int indentLevel, bool showText = true, bool? includeChildren = null);
     }
 }

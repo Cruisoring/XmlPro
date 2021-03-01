@@ -18,10 +18,15 @@ namespace XmlPro.Entities
         {
         }
 
-        public string ToString(int indentLevel, bool? includeChildren = null)
+        public string ToString(int indentLevel, bool showText=true, bool? includeChildren = null)
         {
-            string indent = new string(ToStringIndentChar, indentLevel * ToStringIndentMultiplier);
-            return $"{indent}{Text}";
+            return Text;
+        }
+
+        public string ToStringWithConfig(ToStringConfig config = null)
+        {
+            config ??= new ToStringConfig();
+            return config.EncodeText ? Encode(Text) : Text;
         }
     }
 }

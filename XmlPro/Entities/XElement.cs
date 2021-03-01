@@ -10,28 +10,33 @@ using XmlPro.Interfaces;
 
 namespace XmlPro.Entities
 {
-    public record XElement: StringScope, IContainer, IContained
+    public record XElement: StringScope, IElement
     {
         public static bool SkipEmptyText = true;
         public static bool AttributeBestMatch = true;
-        public static bool ToStringWithChildrenDetails = false;
+        public static bool DefaultIncludingChildren = false;
 
         public static IEnumerable<IContained> Parse([NotNull] char[] context, int since, int? until = null, IContainer parent=null)
         {
             Stack<XTag> unpaired = new Stack<XTag>();
-            List<IContained> children = new List<IContained>();
-            Stack<List<IContained>> stack = new Stack<List<IContained>>();
+            IList<IText> texts = null;
+            IList<IElement> children = new List<IElement>();
+            Stack<(IList<IElement>, IList<IText>)> stack = new Stack<(IList<IElement>, IList<IText>)>();
 
             int lastEnd = since;
             IEnumerable<XTag> tags = XTag.ParseTags(context, since, until);
             foreach (var tag in tags)
             {
-                if (tag.Begin > lastEnd)
+                if (tag.Begin > lastEnd+1)
                 {
                     string text = new string(context, lastEnd, tag.Begin-lastEnd);
                     if (!SkipEmptyText || text.Trim().Length > 0)
                     {
-                        children.Add(new XText(context, lastEnd, tag.Begin));
+                        if (texts == null)
+                        {
+                            texts = new List<IText>();
+                        }
+                        texts.Add(new XText(context, lastEnd, tag.Begin));
                     }
                 }
                 switch (tag.Type)
@@ -46,8 +51,8 @@ namespace XmlPro.Entities
                         break;
                     case TagType.Opening:
                         unpaired.Push(tag);
-                        stack.Push(children);
-                        children = new List<IContained>();
+                        stack.Push((children, texts));
+                        (children, texts) = (new List<IElement>(), null);
                         break;
                     case TagType.Closing:
                         var opening = unpaired.Pop();
@@ -61,8 +66,8 @@ namespace XmlPro.Entities
                         }
                         else
                         {
-                            var newElement = new XElement(context, opening, tag, children);
-                            children = stack.Pop();
+                            var newElement = new XElement(context, opening, tag, children, texts);
+                            (children, texts) = stack.Pop();
                             children.Add(newElement);
                         }
                         break;
@@ -89,7 +94,8 @@ namespace XmlPro.Entities
         public XTag Opening { get; init; }
         public XTag Closing { get; init; }
 
-        public IList<IContained> Children { get; init; }
+        public IList<IElement> Children { get; init; }
+        public IList<IText> Texts { get; init; }
 
         public Dictionary<string, string> Attributes { get; init; }
 
@@ -118,10 +124,11 @@ namespace XmlPro.Entities
                 attr => attr.Value
             );
             Children = null;
+            Texts = null;
         }
 
         public XElement([NotNull] char[] context, [NotNull] XTag opening, [NotNull] XTag closing,
-            IList<IContained> children = null) : 
+            IList<IElement> children = null, IList<IText> texts = null) : 
             base(context, opening.Begin, closing.End)
         {
             Opening = opening;
@@ -144,33 +151,7 @@ namespace XmlPro.Entities
 
             Children = children;
             Children.ForEach(c => c.Parent = this);
-        }
-
-        public string ToString(int indentLevel, bool? includeChildren=null)
-        {
-            string indent = new string(ToStringIndentChar, indentLevel*ToStringIndentMultiplier);
-            if (Type == ElementType.Compound)
-            {
-                if (Children.Any(c => c is XElement))
-                {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine($"{indent}{Opening}");
-                    if (includeChildren ?? ToStringWithChildrenDetails)
-                    {
-                        Children.ForEach(c => sb.AppendLine(c.ToString(indentLevel + 1, includeChildren)));
-                    }
-                    sb.Append($"{indent}{Closing}");
-                    return sb.ToString();
-                }
-                else
-                {
-                    return $"{indent}{Opening}{String.Join("", Children.Select(e => e.ToString(0, includeChildren)))}{Closing}";
-                }
-            }
-            else
-            {
-                return $"{indent}{Opening}";
-            }
+            Texts = texts;
         }
 
         public string this[string attrName]
@@ -195,7 +176,7 @@ namespace XmlPro.Entities
             }
         }
 
-        public IContained this[int childIndex]
+        public IElement this[int childIndex]
         {
             get
             {
@@ -214,11 +195,76 @@ namespace XmlPro.Entities
             }
         }
 
+        public string GetText(int? index = null)
+        {
+            return ScopeExtensions.GetText(Texts, index);
+        }
+
+        public string ToString(int indentLevel, bool showText=true, bool? includeChildren=null)
+        {
+            string indent = new string(ToStringIndentChar, indentLevel*ToStringIndentMultiplier);
+            if (Type == ElementType.Compound)
+            {
+                StringBuilder sb = null;
+                if (showText && Texts != null)
+                {
+                    if (Children.Count == 0)
+                    {
+                        return $"{indent}{Opening}{GetText(null)}{Closing}";
+                    }
+                    else
+                    {
+                        sb = new StringBuilder();
+                        sb.AppendLine($"{indent}{Opening}");
+                        string childrenIndent = new string(ToStringIndentChar, (1+indentLevel) * ToStringIndentMultiplier);
+                        IEnumerable<IContained> nodes = Children.Cast<IContained>()
+                            .Union(Texts.Cast<IContained>()).OrderBy(node => node.Begin);
+                        IContained lastNode = null;
+                        foreach (var node in nodes)
+                        {
+                            if (node is XText text)
+                            {
+                                sb.Append($"{childrenIndent}{text.Text.TrimStart()}");
+                            }
+                            else
+                            {
+                                string nodeString = node.ToString(indentLevel + 1, showText, includeChildren);
+                                sb.AppendLine(lastNode is XText ? nodeString.TrimStart() : nodeString);
+                            }
+
+                            lastNode = node;
+                        }
+                        sb.AppendLine($"{indent}{Closing}");
+                        return sb.ToString();
+                    }
+                }
+                else if (Children.Count == 0)
+                {
+                    return $"{indent}{Opening}{Closing}";
+                }
+                else
+                {
+                    sb = new StringBuilder();
+                    sb.AppendLine($"{indent}{Opening}");
+                    if (includeChildren ?? DefaultIncludingChildren)
+                    {
+                        Children.ForEach(c => sb.AppendLine(c.ToString(indentLevel + 1, showText, includeChildren)));
+                    }
+                    sb.Append($"{indent}{Closing}");
+                    return sb.ToString();
+                }
+            }
+            else
+            {
+                return $"{indent}{Opening}";
+            }
+        }
+
         public override string ToString()
         {
             if (Type == ElementType.Compound)
             {
-                return ToStringWithChildrenDetails ? ToString(0) : $"{Opening}...{Closing}";
+                return DefaultIncludingChildren ? ToString(0) : $"{Opening}...{Closing}";
             }
             else
             {

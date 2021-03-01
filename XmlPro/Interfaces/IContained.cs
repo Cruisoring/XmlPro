@@ -7,6 +7,9 @@ using XmlPro.Enums;
 
 namespace XmlPro.Interfaces
 {
+    /// <summary>
+    /// Interface representing XML nodes to be contained by <c>IContainer</c> nodes.
+    /// </summary>
     public interface IContained : IScope, IText
     {
         /// <summary>

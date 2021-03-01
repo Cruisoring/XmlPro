@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace XmlPro.Interfaces
 {
+    /// <summary>
+    /// Interface to represent XML nodes that can contain other nodes.
+    /// </summary>
     public interface IContainer : IScope
     {
         public IList<IElement> Children { get; }

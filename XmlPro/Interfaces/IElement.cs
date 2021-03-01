@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace XmlPro.Interfaces
 {
-    public interface IElement : IText, IScope, IContained, IContainer
+    /// <summary>
+    /// Interface to represent <c>XElement</c> that can contain other XML nodes represented as <c>IContained</c>, and also contained by <c>IContainer</c>.
+    /// </summary>
+    public interface IElement : IContained, IContainer
     {
     }
 }

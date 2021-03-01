@@ -7,11 +7,24 @@ using System.Threading.Tasks;
 namespace XmlPro.Interfaces
 {
     /// <summary>
-    /// Interface to represent XML nodes that can contain other nodes.
+    /// Interface to represent XML nodes that can contain other nodes of <c>IElement</c> or <c>IText</c> types.
     /// </summary>
     public interface IContainer : IScope
     {
+        /// <summary>
+        /// Level of the current <c>IContained</c> node relative to the root, it shall be <c>Level</c> of <c>Parent</c> plus one.
+        /// Can be used as filter or by <code>ToStringWithConfig()</code>.
+        /// </summary>
+        public int Level { get; init; }
+
+        /// <summary>
+        /// Children <c>IElement</c> nodes as a list with original order for easier filtering and accessing.
+        /// </summary>
         public IList<IElement> Children { get; }
+
+        /// <summary>
+        /// Children <c>IText</c> nodes as a list with original order for easier filtering and accessing.
+        /// </summary>
         public IList<IText> Texts { get; }
 
         /// <summary>

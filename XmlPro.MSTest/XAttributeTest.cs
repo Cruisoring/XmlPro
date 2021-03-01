@@ -64,8 +64,8 @@ namespace XmlPro.Test
             char[] chars = "<node \tfrom  amount\u00a5  >".ToCharArray();
             XAttribute[] results = XAttribute.AttributesWithin(chars, 5).ToArray();
             Assert.IsTrue(results.Length == 2
-                          && results[0].ToString() == "from=\"\""
-                          && results[1].ToString() == "amount¥=\"\"");
+                          && results[0].ToString() == "from"
+                          && results[1].ToString() == "amount¥");
             Array.ForEach(results, r => Console.WriteLine(r.ToString()));
         }
     }

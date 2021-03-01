@@ -13,15 +13,24 @@ namespace XmlPro.Interfaces
     public interface IContained : IScope, IText
     {
         /// <summary>
-        /// The container of this node.
+        /// The container of this node, could be updated by the closing tag of the <c>Parent</c> node.
         /// </summary>
         public IContainer Parent { get; set; }
+
+        /// <summary>
+        /// Level of the current <c>IContained</c> node relative to the root, it shall be <c>Level</c> of <c>Parent</c> plus one.
+        /// Can be used as filter or by <code>ToStringWithConfig()</code>.
+        /// </summary>
+        public int Level { get; init; }
 
         /// <summary>
         /// Type of this node.
         /// </summary>
         public ElementType Type { get; }
 
+        //TODO: replace it with ToStringWithConfig(ToStringConfig config = null)
         public string ToString(int indentLevel, bool showText = true, bool? includeChildren = null);
+
+        // public string ToStringWithConfig(ToStringConfig config = null);
     }
 }

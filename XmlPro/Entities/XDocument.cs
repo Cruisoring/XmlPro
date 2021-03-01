@@ -13,6 +13,7 @@ namespace XmlPro.Entities
     {
         public static readonly ElementType[] RootElementTypes = new[] {ElementType.Compound, ElementType.Simple};
 
+        public int Level { get; init; }
 
         public IList<IElement> Children { get; init; }
 
@@ -23,8 +24,10 @@ namespace XmlPro.Entities
         public XDocument([NotNull] char[] context, [NotNull] IList<IElement> children, IList<IText> texts = null) : 
             base(context, 0, context.Length)
         {
+            Level = 0;
             Children = children;
             Texts = texts;
+            children.ForEach(c => c.Parent = this);
 
             Root = children.Single(c => RootElementTypes.Contains(c.Type)) as XElement;
         }

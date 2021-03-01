@@ -22,6 +22,7 @@ namespace XmlPro.Entities
             IList<IText> texts = null;
             IList<IElement> children = new List<IElement>();
             Stack<(IList<IElement>, IList<IText>)> stack = new Stack<(IList<IElement>, IList<IText>)>();
+            int level = (parent?.Level ?? 0) + 1;
 
             int lastEnd = since;
             IEnumerable<XTag> tags = XTag.ParseTags(context, since, until);
@@ -36,7 +37,7 @@ namespace XmlPro.Entities
                         {
                             texts = new List<IText>();
                         }
-                        texts.Add(new XText(context, lastEnd, tag.Begin));
+                        texts.Add(new XText(context, level, lastEnd, tag.Begin));
                     }
                 }
                 switch (tag.Type)
@@ -46,16 +47,18 @@ namespace XmlPro.Entities
                     case TagType.CDATA:
                     case TagType.DocType:
                     case TagType.Remark:
-                        var child = new XElement(context, tag, parent);
+                        var child = new XElement(context, tag, level);
                         children.Add(child);
                         break;
                     case TagType.Opening:
                         unpaired.Push(tag);
                         stack.Push((children, texts));
                         (children, texts) = (new List<IElement>(), null);
+                        level++;
                         break;
                     case TagType.Closing:
                         var opening = unpaired.Pop();
+                        level--;
                         if (opening == null)
                         {
                             throw new FormatException($"Missing opening tag <{tag.Name}>");
@@ -66,7 +69,7 @@ namespace XmlPro.Entities
                         }
                         else
                         {
-                            var newElement = new XElement(context, opening, tag, children, texts);
+                            var newElement = new XElement(context, opening, tag, level, children, texts);
                             (children, texts) = stack.Pop();
                             children.Add(newElement);
                         }
@@ -86,10 +89,22 @@ namespace XmlPro.Entities
             return children;
         }
 
+        /// <summary>
+        /// The container of this node, could be updated by the closing tag of the <c>Parent</c> node.
+        /// </summary>
+        public IContainer Parent { get; set; }
 
+        /// <summary>
+        /// Level of the current <c>IContained</c> node relative to the root, it shall be <c>Level</c> of <c>Parent</c> plus one.
+        /// Can be used as filter or by <code>ToStringWithConfig()</code>.
+        /// </summary>
+        public int Level { get; init; }
+
+        /// <summary>
+        /// Type of this node.
+        /// </summary>
         public ElementType Type { get; init; }
 
-        public IContainer Parent { get; set; }
         public string Name { get; init; }
         public XTag Opening { get; init; }
         public XTag Closing { get; init; }
@@ -99,10 +114,10 @@ namespace XmlPro.Entities
 
         public Dictionary<string, string> Attributes { get; init; }
 
-        public XElement([NotNull] char[] context, [NotNull] XTag opening, IContainer parent=null) : base(context, opening.Begin, opening.End)
+        public XElement([NotNull] char[] context, [NotNull] XTag opening, int level) : base(context, opening.Begin, opening.End)
         {
             Opening = opening;
-            Parent = parent;
+            Level = level;
             switch (opening.Type)
             {
                 case TagType.Sound:
@@ -127,7 +142,7 @@ namespace XmlPro.Entities
             Texts = null;
         }
 
-        public XElement([NotNull] char[] context, [NotNull] XTag opening, [NotNull] XTag closing,
+        public XElement([NotNull] char[] context, [NotNull] XTag opening, [NotNull] XTag closing, int level,
             IList<IElement> children = null, IList<IText> texts = null) : 
             base(context, opening.Begin, closing.End)
         {
@@ -143,6 +158,7 @@ namespace XmlPro.Entities
             }
 
             Type = ElementType.Compound;
+            Level = level;
             Name = Opening.Name;
             Attributes = Opening.Attributes.ToDictionary(
                 attr => attr.Name,

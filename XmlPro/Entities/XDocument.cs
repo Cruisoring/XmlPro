@@ -13,23 +13,39 @@ namespace XmlPro.Entities
     {
         public static readonly ElementType[] RootElementTypes = new[] {ElementType.Compound, ElementType.Simple};
 
+        /// <summary>
+        /// The PrintConfig shall serialize the content of the XDocument as a legal XML string.
+        /// </summary>
+        public static readonly PrintConfig DefaultDocumentConfig = new PrintConfig()
+        {
+            PrintAsLevel = 0,
+            MaxNodeLevelToShow = 1000,
+            AttributesOrderByName = false,
+            ShowDeclarative = true,
+            ShowTexts = true,
+            ShowElements = true,
+            EncodeText = true,
+            EncodeAttributeName = true,
+            EncodeAttributeValue = true
+        };
+
         public int Level { get; init; }
 
-        public IList<IElement> Children { get; init; }
+        public IList<IElement> Elements { get; init; }
 
         public IList<IText> Texts { get; }
 
         public XElement Root { get; init; }
 
-        public XDocument([NotNull] char[] context, [NotNull] IList<IElement> children, IList<IText> texts = null) : 
+        public XDocument([NotNull] char[] context, [NotNull] IList<IElement> elements, IList<IText> texts = null) : 
             base(context, 0, context.Length)
         {
             Level = 0;
-            Children = children;
+            Elements = elements;
             Texts = texts;
-            children.ForEach(c => c.Parent = this);
+            elements.ForEach(c => c.Parent = this);
 
-            Root = children.Single(c => RootElementTypes.Contains(c.Type)) as XElement;
+            Root = elements.Single(c => RootElementTypes.Contains(c.Type)) as XElement;
         }
 
         public string this[string attrName] => Root[attrName];

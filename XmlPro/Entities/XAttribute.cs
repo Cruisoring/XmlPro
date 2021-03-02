@@ -20,7 +20,7 @@ namespace XmlPro.Entities
         /// <param name="since">Start of the scope to search attributes.</param>
         /// <param name="until">End of the scope to search attributes, end of the context to be used if until is NULL.</param>
         /// <returns>XAttributes yield for consumption.</returns>
-        public static IEnumerable<XAttribute> AttributesWithin([NotNull] char[] context, int since, int? until = null)
+        public static IEnumerable<XAttribute> ParseAttributes([NotNull] char[] context, int since, int? until = null)
         {
             var (nameBegin, nameEnd, equalPosition, valueBegin, valueEnd, valueQuote) =
                 (-1, -1, -1, -1, -1, DoubleQuote);

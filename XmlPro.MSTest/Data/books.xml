@@ -2,16 +2,18 @@
 <bookstore>
   Awesome books
   <book category="children">
-    <title>Harry Potter</title>
-    <author>J K. Rowling</author>
+    <title>Stories for kids</title>
+    <author>Alice Brown</author>
     <year>2005</year>
     <price>29.99</price>
+    <email>&lt;alice.brown@email.com&gt;</email>
   </book>
-  <book category="web">
-    <title>Learning XML</title>
-    <author>Erik T. Ray</author>
-    <year>2003</year>
-    <price>39.95</price>
+  <book category="dev">
+    <title>Practical XML</title>
+    <author>Erik Somebody</author>
+    <year>2013</year>
+    <price>19.95</price>
+    <email>&lt;erik.somebody@email.com&gt;</email>
   </book>
   show 2 of them!
 </bookstore>

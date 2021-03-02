@@ -19,7 +19,8 @@ namespace XmlPro.MSTest
         {
             string testData = File.ReadAllText("Data/books.xml");
             IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
-            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true, true)));
+            var nodeTexts = nodes.Select(node => node.ToString()).Where(t => !String.IsNullOrEmpty(t));
+            nodeTexts.ForEach(Console.WriteLine);
         }
 
         [TestMethod]
@@ -27,7 +28,8 @@ namespace XmlPro.MSTest
         {
             string testData = File.ReadAllText("Data/XML.xml");
             IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
-            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true, true)));
+            var nodeTexts = nodes.Select(node => node.ToString()).Where(t => !String.IsNullOrEmpty(t));
+            nodeTexts.ForEach(Console.WriteLine);
         }
 
         [TestMethod]
@@ -35,7 +37,8 @@ namespace XmlPro.MSTest
         {
             string testData = File.ReadAllText("Data/XML.html");
             IEnumerable<IContained> nodes = XElement.Parse(testData.ToCharArray(), 0);
-            nodes.ForEach(node => Console.WriteLine(node.ToString(0, true, true)));
+            var nodeTexts = nodes.Select(node => node.ToString()).Where(t => !String.IsNullOrEmpty(t));
+            nodeTexts.ForEach(Console.WriteLine);
         }
     }
 }

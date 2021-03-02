@@ -13,6 +13,12 @@ namespace XmlPro.Entities
     /// </summary>
     public record XText: StringScope, IContained
     {
+        public static readonly PrintConfig DefaultTextConfig = new PrintConfig()
+        {
+            PrintAsLevel = 0,
+            EncodeText = false,
+        };
+
         /// <summary>
         /// The container of this node, either <c>XDocument</c> or <c>XElement</c>.
         /// </summary>
@@ -33,16 +39,13 @@ namespace XmlPro.Entities
             Level = level;
         }
 
-        //TODO: replace it with ToStringWithConfig(ToStringConfig config = null)
-        public string ToString(int indentLevel, bool showText=true, bool? includeChildren = null)
+        public string Print(PrintConfig config = null)
         {
-            return Text;
+            config ??= DefaultTextConfig;
+            string text = config.EncodeText ? Encode(Text) : Text;
+            return $"{new string(ToStringIndentChar, (config.PrintAsLevel ?? 0) * ToStringIndentMultiplier)}{text}";
         }
 
-        public string ToStringWithConfig(ToStringConfig config = null)
-        {
-            config ??= new ToStringConfig();
-            return config.EncodeText ? Encode(Text) : Text;
-        }
+        public override string ToString() => Text;
     }
 }

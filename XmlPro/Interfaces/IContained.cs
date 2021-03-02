@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using XmlPro.Entities;
 using XmlPro.Enums;
 
 namespace XmlPro.Interfaces
@@ -28,9 +29,6 @@ namespace XmlPro.Interfaces
         /// </summary>
         public ElementType Type { get; }
 
-        //TODO: replace it with ToStringWithConfig(ToStringConfig config = null)
-        public string ToString(int indentLevel, bool showText = true, bool? includeChildren = null);
-
-        // public string ToStringWithConfig(ToStringConfig config = null);
+        public string Print(PrintConfig config = null);
     }
 }

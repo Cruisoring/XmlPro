@@ -31,6 +31,22 @@ namespace XmlPro.Extensions
             return creator(begin, end);
         }
 
+        public static IScope OfScope<T>(this T[] context, int begin = 0, int? end = null)
+        {
+            int _begin = begin < 0 ? context.Length + begin : begin;
+            int _end = end == null ? context.Length : (end < 0 ? context.Length + end.Value : end.Value);
+            return new Scope(_begin, _end);
+        }
+
+        public static IElement AsElement([NotNull] string context, int level)
+        {
+            char[] chars = context.ToCharArray();
+            IEnumerable<IContained> nodes = XElement.Parse(chars, 0, chars.Length, null);
+            XElement first = nodes.First() as XElement;
+            return first with { Level = level };
+        }
+
+
         public static int IndexOf<T>(this IScope scope, T[] context, T[] part) where T: IComparable<T>
         {
             if (scope.Begin < 0 || scope.End >= context.Length)
@@ -75,18 +91,12 @@ namespace XmlPro.Extensions
 
         public static string TextFrom(this IScope scope, [NotNull] char[] source)
         {
-            if (scope.Begin < 0 || scope.End >= source.Length)
+            if (scope.Begin < 0 || scope.End > source.Length)
             {
                 throw new IndexOutOfRangeException();
             }
 
-            //*/
             return new string(source, scope.Begin, scope.Length);
-            /*/
-            char[] part = new char[scope.Length];
-            Array.Copy(source, scope.Begin, part, 0, scope.Length);
-            return new string(part);
-            //*/
         }
 
         public static string GetText(IList<IText> texts, int? index=null)

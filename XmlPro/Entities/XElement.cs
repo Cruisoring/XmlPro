@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using XmlPro.Enums;
 using XmlPro.Extensions;
 using XmlPro.Interfaces;
@@ -14,13 +15,33 @@ namespace XmlPro.Entities
     {
         public static bool SkipEmptyText = true;
         public static bool AttributeBestMatch = true;
-        public static bool DefaultIncludingChildren = false;
+        public static bool DefaultIncludingElements = false;
+
+        /// <summary>
+        /// The PrintConfig shall serialize the content of the XDocument as a legal XML string.
+        /// </summary>
+        public static readonly PrintConfig DefaultElementConfig = new PrintConfig()
+        {
+            PrintAsLevel = 0,
+            MaxNodeLevelToShow = 4,
+
+            ShowDeclarative = false,
+            ShowTexts = true,
+            ShowElements = true,
+
+            AttributesOrderByName = true,
+            EncodeText = false,
+            EncodeAttributeName = false,
+            EncodeAttributeValue = false
+        };
+
+
 
         public static IEnumerable<IContained> Parse([NotNull] char[] context, int since, int? until = null, IContainer parent=null)
         {
             Stack<XTag> unpaired = new Stack<XTag>();
             IList<IText> texts = null;
-            IList<IElement> children = new List<IElement>();
+            IList<IElement> elements = new List<IElement>();
             Stack<(IList<IElement>, IList<IText>)> stack = new Stack<(IList<IElement>, IList<IText>)>();
             int level = (parent?.Level ?? 0) + 1;
 
@@ -47,13 +68,13 @@ namespace XmlPro.Entities
                     case TagType.CDATA:
                     case TagType.DocType:
                     case TagType.Remark:
-                        var child = new XElement(context, tag, level);
-                        children.Add(child);
+                        var element = new XElement(context, tag, level);
+                        elements.Add(element);
                         break;
                     case TagType.Opening:
                         unpaired.Push(tag);
-                        stack.Push((children, texts));
-                        (children, texts) = (new List<IElement>(), null);
+                        stack.Push((elements, texts));
+                        (elements, texts) = (new List<IElement>(), null);
                         level++;
                         break;
                     case TagType.Closing:
@@ -69,9 +90,9 @@ namespace XmlPro.Entities
                         }
                         else
                         {
-                            var newElement = new XElement(context, opening, tag, level, children, texts);
-                            (children, texts) = stack.Pop();
-                            children.Add(newElement);
+                            var newElement = new XElement(context, opening, tag, level, elements, texts);
+                            (elements, texts) = stack.Pop();
+                            elements.Add(newElement);
                         }
                         break;
                     default:
@@ -86,7 +107,7 @@ namespace XmlPro.Entities
                 throw new ArgumentException("Failed to pair all tags.");
             }
 
-            return children;
+            return elements;
         }
 
         /// <summary>
@@ -109,8 +130,10 @@ namespace XmlPro.Entities
         public XTag Opening { get; init; }
         public XTag Closing { get; init; }
 
-        public IList<IElement> Children { get; init; }
+        public IList<IElement> Elements { get; init; }
         public IList<IText> Texts { get; init; }
+
+        protected IContained[] nodes;
 
         public Dictionary<string, string> Attributes { get; init; }
 
@@ -138,12 +161,13 @@ namespace XmlPro.Entities
                 attr => attr.Name,
                 attr => attr.Value
             );
-            Children = null;
+            Elements = null;
             Texts = null;
+            nodes = null;
         }
 
         public XElement([NotNull] char[] context, [NotNull] XTag opening, [NotNull] XTag closing, int level,
-            IList<IElement> children = null, IList<IText> texts = null) : 
+            IList<IElement> elements = null, IList<IText> texts = null) : 
             base(context, opening.Begin, closing.End)
         {
             Opening = opening;
@@ -165,9 +189,22 @@ namespace XmlPro.Entities
                 attr => attr.Value
             );
 
-            Children = children;
-            Children.ForEach(c => c.Parent = this);
+            Elements = elements;
+            Elements.ForEach(c => c.Parent = this);
             Texts = texts;
+            if (Texts == null)
+            {
+                nodes = elements?.Cast<IContained>().ToArray();
+            }
+            else if (elements == null)
+            {
+                nodes = texts?.Cast<IContained>().ToArray();
+            }
+            else
+            {
+                nodes = elements.Cast<IContained>().Union(texts.Cast<IContained>()).ToArray();
+                Array.Sort(nodes);
+            }
         }
 
         public string this[string attrName]
@@ -196,96 +233,95 @@ namespace XmlPro.Entities
         {
             get
             {
-                if (Children == null)
+                if (Elements == null)
                 {
-                    throw new InvalidOperationException($"{Type} Element has no children.");
+                    throw new InvalidOperationException($"{Type} Element has no elements.");
                 }
-                else if (Children.Count == 0 || childIndex >= Children.Count || childIndex < -Children.Count)
+                else if (Elements.Count == 0 || childIndex >= Elements.Count || childIndex < -Elements.Count)
                 {
-                    throw new IndexOutOfRangeException($"Index {childIndex} is out of range with children of {Children.Count}");
+                    throw new IndexOutOfRangeException($"Index {childIndex} is out of range with elements of {Elements.Count}");
                 }
                 else
                 {
-                    return Children[childIndex < 0 ? Children.Count + childIndex : childIndex];
+                    return Elements[childIndex < 0 ? Elements.Count + childIndex : childIndex];
                 }
             }
         }
+
+        public IEnumerable<IContained> this[Predicate<IContained> filter, bool recursively = false]
+        {
+            get
+            {
+                // if (recursively)
+                // {
+                //     foreach (var node in nodes)
+                //     {
+                //         
+                //     }
+                // }
+                throw new NotImplementedException();
+            }
+        }
+
 
         public string GetText(int? index = null)
         {
             return ScopeExtensions.GetText(Texts, index);
         }
 
-        public string ToString(int indentLevel, bool showText=true, bool? includeChildren=null)
+        public string Print(PrintConfig config = null)
         {
-            string indent = new string(ToStringIndentChar, indentLevel*ToStringIndentMultiplier);
-            if (Type == ElementType.Compound)
+            config ??= DefaultElementConfig;
+            int level = config.PrintAsLevel ?? Level;
+            var (maxLevel, attrOrdered, showDeclarative, showTexts, showElements, encodeText, encodeAttrName,
+                    encodeAttrValue) =
+                (config.MaxNodeLevelToShow, config.AttributesOrderByName, config.ShowDeclarative, config.ShowTexts,
+                    config.ShowElements, config.EncodeText, config.EncodeAttributeName, config.EncodeAttributeValue);
+        
+            string indent = new string(ToStringIndentChar, level * ToStringIndentMultiplier);
+            if (level > maxLevel)
             {
-                StringBuilder sb = null;
-                if (showText && Texts != null)
-                {
-                    if (Children.Count == 0)
-                    {
-                        return $"{indent}{Opening}{GetText(null)}{Closing}";
-                    }
-                    else
-                    {
-                        sb = new StringBuilder();
-                        sb.AppendLine($"{indent}{Opening}");
-                        string childrenIndent = new string(ToStringIndentChar, (1+indentLevel) * ToStringIndentMultiplier);
-                        IEnumerable<IContained> nodes = Children.Cast<IContained>()
-                            .Union(Texts.Cast<IContained>()).OrderBy(node => node.Begin);
-                        IContained lastNode = null;
-                        foreach (var node in nodes)
-                        {
-                            if (node is XText text)
-                            {
-                                sb.Append($"{childrenIndent}{text.Text.TrimStart()}");
-                            }
-                            else
-                            {
-                                string nodeString = node.ToString(indentLevel + 1, showText, includeChildren);
-                                sb.AppendLine(lastNode is XText ? nodeString.TrimStart() : nodeString);
-                            }
-
-                            lastNode = node;
-                        }
-                        sb.AppendLine($"{indent}{Closing}");
-                        return sb.ToString();
-                    }
-                }
-                else if (Children.Count == 0)
-                {
-                    return $"{indent}{Opening}{Closing}";
-                }
-                else
-                {
-                    sb = new StringBuilder();
-                    sb.AppendLine($"{indent}{Opening}");
-                    if (includeChildren ?? DefaultIncludingChildren)
-                    {
-                        Children.ForEach(c => sb.AppendLine(c.ToString(indentLevel + 1, showText, includeChildren)));
-                    }
-                    sb.Append($"{indent}{Closing}");
-                    return sb.ToString();
-                }
+                // Not print when the level of the node is greater than maxLevel
+                return "";
+            }
+            else if (Type == ElementType.Declarative && !showDeclarative)
+            {
+                // Not print when this node is Declarative and that is not allowed to print
+                return "";
+            }
+            else if (level == maxLevel || Type != ElementType.Compound)
+            {
+                string text = Texts == null ? "" : string.Join(' ', Texts.Select(t => t.ToString()));
+                // When this node is simple or the max level to show, print its own tags and text
+                return $"{indent}{Opening.Print(config)}{text}{Closing?.Print(config)}";
             }
             else
             {
-                return $"{indent}{Opening}";
+                IList<IContained> children = nodes.Where(node =>
+                    config.ShowDeclarative || node.Type != ElementType.Declarative).ToList();
+
+                if (children.Count == 0)
+                {
+                    return $"{indent}{Opening.Print(config)}{Closing.Print(config)}";
+                }
+
+                PrintConfig childConfig = config with {PrintAsLevel = config.PrintAsLevel + 1};
+                StringBuilder sb = new StringBuilder($"{indent}{Opening.Print(config)}\n");
+                IEnumerable<string> lines = children.Select(node =>
+                    (node is IElement element) ? $"{element.Print(childConfig)}\n" : node.Print(childConfig));
+                lines.ForEach(l => sb.Append(l));
+                if (sb[^1] != '\n')
+                {
+                    sb.AppendLine();
+                }
+                sb.AppendLine($"{indent}{Closing.Print(config)}");
+                return sb.ToString();
             }
         }
 
         public override string ToString()
         {
-            if (Type == ElementType.Compound)
-            {
-                return DefaultIncludingChildren ? ToString(0) : $"{Opening}...{Closing}";
-            }
-            else
-            {
-                return Opening.ToString();
-            }
+            return Print();
         }
     }
 }

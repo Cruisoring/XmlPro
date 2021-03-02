@@ -18,12 +18,12 @@ namespace XmlPro.Interfaces
         public int Level { get; init; }
 
         /// <summary>
-        /// Children <c>IElement</c> nodes as a list with original order for easier filtering and accessing.
+        /// Contained <c>IElement</c> nodes as a list with original order for easier filtering and accessing.
         /// </summary>
-        public IList<IElement> Children { get; }
+        public IList<IElement> Elements { get; }
 
         /// <summary>
-        /// Children <c>IText</c> nodes as a list with original order for easier filtering and accessing.
+        /// Contained <c>IText</c> nodes as a list with original order for easier filtering and accessing.
         /// </summary>
         public IList<IText> Texts { get; }
 
@@ -40,6 +40,14 @@ namespace XmlPro.Interfaces
         /// <param name="childIndex">Positive number for normal access, negative to get element reversely.</param>
         /// <returns>The child at the position specified by childIndex.</returns>
         public IElement this[int childIndex] { get; }
+
+        /// <summary>
+        /// Indexer to get qualified children by filter.
+        /// </summary>
+        /// <param name="filter">The filter to get the concerned children that can be <c>XElement</c> or <c>XText</c> in their original orders.</param>
+        /// <param name="recursively">Apply filter to the children of the <c>IContainer</c> to get matched nodes recursively.</param>
+        /// <returns>All children matching the given condition.</returns>
+        // public IEnumerable<IContained> this[Predicate<IContained> filter, bool recursively = false] { get; }
 
         /// <summary>
         /// Get the text of this entity as either the single piece of text with index identified, or the joined if index is null. 

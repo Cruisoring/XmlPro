@@ -30,7 +30,11 @@ namespace XmlPro.Entities
         public const char DeclarationIdentifier = '?';
         public const char RemarkIdentifier = '!';
         public const char UnderScore = '_';
+        public const char DeclarativeNamePrefix = '#';
         public static readonly char[] NameEndings = new[] {' ', '\t', '\r', '\n', TagClosing, TagEnd};
+
+        public static readonly TagType[] DeclarativeTypes = new[]
+            {TagType.Declaration, TagType.CDATA, TagType.DocType, TagType.Remark};
 
         public static readonly Dictionary<TagType, (string, string)> TagFormats =
             new Dictionary<TagType, (string, string)>()
@@ -42,8 +46,20 @@ namespace XmlPro.Entities
 
                 {TagType.Opening, ("<", ">")},
                 {TagType.Closing, ("</", ">")},
-                {TagType.Sound, ("<", "/>")},
+                {TagType.Sound, ("<", " />")},
             };
+
+        /// <summary>
+        /// This PrintConfig shall serialize the content of the XTag as a friendly but also could be illegal XML string.
+        /// </summary>
+        public static readonly PrintConfig DefaultTagConfig = new PrintConfig()
+        {
+            AttributesOrderByName = true,
+            EncodeText = false,
+            EncodeAttributeName = false,
+            EncodeAttributeValue = false
+        };
+
 
         public static IEnumerable<XTag> ParseTags([NotNull] char[] context, int since, int? until = null)
         {
@@ -81,20 +97,20 @@ namespace XmlPro.Entities
                             {
                                 tagType = TagType.Remark;
                                 closing = REMARK_END;
-                                name = "#comment";
+                                name = $"{DeclarativeNamePrefix}comment";
                                 nameEnding = i + REMARK_START.Length;
                             }
                             else if (leading.StartsWith(CDATA_START))
                             {
                                 tagType = TagType.CDATA;
                                 closing = CDATA_END;
-                                name = "#cdata";
+                                name = $"{DeclarativeNamePrefix}cdata";
                                 nameEnding = i + CDATA_START.Length;
                             }
                             else if (leading.StartsWith(DocType_START))
                             {
                                 tagType = TagType.DocType;
-                                name = "#doctype";
+                                name = $"{DeclarativeNamePrefix}doctype";
                                 nameEnding = i + DocType_START.Length;
                             }
                             else
@@ -106,14 +122,14 @@ namespace XmlPro.Entities
                         case TagClosing:
                             tagType = TagType.Closing;
                             nameEnding = Indexer.IndexOfAny(context, NameEndings, i + 2);
-                            name = new string(context, i + 2, nameEnding-i-2);
+                            name = new string(context, i + 2, nameEnding - i - 2);
                             break;
                         default:
                             if (Char.IsLetter(next) || next == UnderScore)
                             {
                                 tagType = TagType.Opening;
                                 nameEnding = Indexer.IndexOfAny(context, NameEndings, i + 1);
-                                name = new string(context, i + 1, nameEnding-i-1);
+                                name = new string(context, i + 1, nameEnding - i - 1);
                             }
                             else
                             {
@@ -142,14 +158,14 @@ namespace XmlPro.Entities
                     }
 
                     tagEnd = closingPos + closing.Length;
-                    if (name.StartsWith('#'))
+                    if (name.StartsWith(DeclarativeNamePrefix))
                     {
                         // Skip extracting attributes from DocType, CDATA and Remark nodes
                         yield return new XTag(context, tagBegin, tagEnd, tagType, name);
                     }
                     else
                     {
-                        yield return new XTag(context, tagBegin, tagEnd, tagType, name, XAttribute.AttributesWithin(context, nameEnding, tagEnd));
+                        yield return new XTag(context, tagBegin, tagEnd, tagType, name, XAttribute.ParseAttributes(context, nameEnding, tagEnd));
 
                     }
 
@@ -178,22 +194,55 @@ namespace XmlPro.Entities
         public XTag(char[] context, int begin, int end, TagType tagType, string name=null, IEnumerable<XAttribute> attributes = null) : this(context, begin, end)
         {
             Type = tagType;
-            Name = name;
+            Name = Decode(name);
             Attributes = attributes?.ToArray() ?? new XAttribute[0];
         }
 
         public override string ToString()
         {
+            return Print();
+        }
+
+        public string Print(PrintConfig config = null)
+        {
+            config ??= DefaultTagConfig;
             var (start, end) = TagFormats[Type];
+            string name = config.EncodeAttributeName ? Encode(Name) : Name;
+
+            if (DeclarativeTypes.Contains(Type))
+            {
+                if (config.ShowDeclarative)
+                {
+                    return Decode(RawText);
+                }
+                else
+                {
+                    return $"{start}{name}{end}";
+                }
+            }
             if (Attributes.Length == 0)
             {
-                return $"{start}{Name}{end}";
+                return $"{start}{name}{end}";
             }
-            else
+
+            XAttribute[] attributes = Attributes;
+            if (config.AttributesOrderByName)
             {
-                IEnumerable<string> attStrings = Attributes.Select(a => a.ToString());
-                return $"{start}{Name} {String.Join(' ', attStrings)}{end}";
+                attributes = Attributes.ToArray();
+                Array.Sort(attributes, attributes.Select(a => a.Name).ToArray());
             }
+
+            StringBuilder sb = new StringBuilder($"{start}{name}");
+            foreach (var attribute in attributes)
+            {
+                sb.Append(" " + (config.EncodeAttributeName ? Encode(attribute.Name) : attribute.Name));
+                sb.Append(attribute.Value == null
+                    ? ""
+                    : "=\"" + (config.EncodeAttributeValue ? Encode(attribute.Value) : attribute.Value) + '"');
+            }
+
+            sb.Append(end);
+            return sb.ToString();
         }
     }
 }

@@ -6,18 +6,21 @@ using System.Threading.Tasks;
 
 namespace XmlPro.Entities
 {
-    public record ToStringConfig
+    public record PrintConfig
     {
+        public static int? DefaultPrintAsLevel = null;
         public static int DefaultMaxNodeLevelToShow = 3;
 
-        public static bool DefaultAttributesOrderByName = false;
         public static bool DefaultShowDeclarative = true;
         public static bool DefaultShowTexts = true;
-        public static bool DefaultShowChildren = true;
+        public static bool DefaultShowElements = true;
+        public static bool DefaultEncodeText = false;
 
-        public static bool DefaultEncodeText = true;
-        public static bool DefaultEncodeAttributeName = true;
-        public static bool DefaultEncodeAttributeValue = true;
+        public static bool DefaultAttributesOrderByName = true;
+        public static bool DefaultEncodeAttributeName = false;
+        public static bool DefaultEncodeAttributeValue = false;
+
+        public int? PrintAsLevel { get; init; } = DefaultPrintAsLevel;
 
         /// <summary>
         /// The maximum level of node to be shown.
@@ -40,9 +43,9 @@ namespace XmlPro.Entities
         public bool ShowTexts { get; init; } = DefaultShowTexts;
 
         /// <summary>
-        /// True to include Children XElements as indented strings.
+        /// True to include contained XElements as indented strings.
         /// </summary>
-        public bool ShowChildren { get; init; } = DefaultShowChildren;
+        public bool ShowElements { get; init; } = DefaultShowElements;
 
         /// <summary>
         /// True to encode the text contents, otherwise show decoded texts that could make output as invalid XML.

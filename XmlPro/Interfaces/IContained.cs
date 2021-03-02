@@ -11,7 +11,7 @@ namespace XmlPro.Interfaces
     /// <summary>
     /// Interface representing XML nodes to be contained by <c>IContainer</c> nodes.
     /// </summary>
-    public interface IContained : IScope, IText
+    public interface IContained : IScope, IWithText, IWithLevel
     {
         /// <summary>
         /// The container of this node, could be updated by the closing tag of the <c>Parent</c> node.
@@ -19,16 +19,15 @@ namespace XmlPro.Interfaces
         public IContainer Parent { get; set; }
 
         /// <summary>
-        /// Level of the current <c>IContained</c> node relative to the root, it shall be <c>Level</c> of <c>Parent</c> plus one.
-        /// Can be used as filter or by <code>ToStringWithConfig()</code>.
-        /// </summary>
-        public int Level { get; init; }
-
-        /// <summary>
         /// Type of this node.
         /// </summary>
         public ElementType Type { get; }
 
+        /// <summary>
+        /// Serialize the <c>IContained</c> into string with options specified in the <c>config</c>.
+        /// </summary>
+        /// <param name="config">The <c>PrintConfig</c> instance instructing how to serialize.</param>
+        /// <returns>The serialized string of the <c>IContained</c> instance.</returns>
         public string Print(PrintConfig config = null);
     }
 }

@@ -99,15 +99,15 @@ namespace XmlPro.Extensions
             return new string(source, scope.Begin, scope.Length);
         }
 
-        public static string GetText(IList<IText> texts, int? index=null)
+        public static string GetText(IList<IWithText> texts, int? index=null, char connector = '\n')
         {
             if (texts == null)
             {
-                return null;
+                return "";
             }
             else if (index == null)
             {
-                return String.Join(' ', texts.Select(t => t.Text));
+                return string.Join(connector, texts.Select(t => t.Text));
             }
             else if (texts.Count == 0 || index >= texts.Count || index < -texts.Count)
             {

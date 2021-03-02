@@ -11,5 +11,7 @@ namespace XmlPro.Interfaces
     /// </summary>
     public interface IElement : IContained, IContainer
     {
+        public string Name { get; }
+
     }
 }

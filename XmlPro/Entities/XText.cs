@@ -41,9 +41,9 @@ namespace XmlPro.Entities
 
         public string Print(PrintConfig config = null)
         {
-            config ??= DefaultTextConfig;
+            config ??= DefaultTextConfig with {PrintAsLevel = Level};
             string text = config.EncodeText ? Encode(Text) : Text;
-            return $"{new string(ToStringIndentChar, (config.PrintAsLevel ?? 0) * ToStringIndentMultiplier)}{text}";
+            return $"{IndentOf(config.PrintAsLevel ?? 0)}{text}";
         }
 
         public override string ToString() => Text;

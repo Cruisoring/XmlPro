@@ -40,10 +40,10 @@ namespace XmlPro.Entities
         public static IEnumerable<IContained> Parse([NotNull] char[] context, int since, int? until = null, IContainer parent=null)
         {
             Stack<XTag> unpaired = new Stack<XTag>();
-            IList<IText> texts = null;
+            IList<IWithText> texts = null;
             IList<IElement> elements = new List<IElement>();
-            Stack<(IList<IElement>, IList<IText>)> stack = new Stack<(IList<IElement>, IList<IText>)>();
-            int level = (parent?.Level ?? 0) + 1;
+            Stack<(IList<IElement>, IList<IWithText>)> stack = new Stack<(IList<IElement>, IList<IWithText>)>();
+            int level = parent?.Level + 1 ?? 0;
 
             int lastEnd = since;
             IEnumerable<XTag> tags = XTag.ParseTags(context, since, until);
@@ -56,7 +56,7 @@ namespace XmlPro.Entities
                     {
                         if (texts == null)
                         {
-                            texts = new List<IText>();
+                            texts = new List<IWithText>();
                         }
                         texts.Add(new XText(context, level, lastEnd, tag.Begin));
                     }
@@ -131,7 +131,7 @@ namespace XmlPro.Entities
         public XTag Closing { get; init; }
 
         public IList<IElement> Elements { get; init; }
-        public IList<IText> Texts { get; init; }
+        public IList<IWithText> Texts { get; init; }
 
         protected IContained[] nodes;
 
@@ -167,7 +167,7 @@ namespace XmlPro.Entities
         }
 
         public XElement([NotNull] char[] context, [NotNull] XTag opening, [NotNull] XTag closing, int level,
-            IList<IElement> elements = null, IList<IText> texts = null) : 
+            IList<IElement> elements = null, IList<IWithText> texts = null) : 
             base(context, opening.Begin, closing.End)
         {
             Opening = opening;
@@ -248,23 +248,61 @@ namespace XmlPro.Entities
             }
         }
 
-        public IEnumerable<IContained> this[Predicate<IContained> filter, bool recursively = false]
+        public IEnumerable<IElement> this[Predicate<IElement> predicate, bool recursively = false]
         {
             get
             {
-                // if (recursively)
-                // {
-                //     foreach (var node in nodes)
-                //     {
-                //         
-                //     }
-                // }
-                throw new NotImplementedException();
+                if (predicate(this))
+                {
+                    yield return this;
+                }
+                if (recursively && Elements != null)
+                {
+                    foreach (var element in Elements)
+                    {
+                        if (predicate(element))
+                        {
+                            yield return element;
+                        }
+                        else if (element is IContainer container)
+                        {
+                            foreach (var contained in container[predicate, true])
+                            {
+                                yield return contained;
+                            }
+                        }
+                    }
+                }
             }
         }
 
+        public IEnumerable<IWithText> SearchText(Predicate<IWithText> predicate, bool resusively = true)
+        {
+            foreach (var node in nodes)
+            {
+                if (resusively && node is XElement element)
+                {
+                    foreach (var matchedChildText in element.SearchText(predicate, resusively))
+                    {
+                        yield return matchedChildText;
+                    }
+                }
+                else if (resusively && node is XText text)
+                {
+                    if (predicate(text))
+                    {
+                        yield return text;
+                    }
+                }
+            }
+        }
 
-        public string GetText(int? index = null)
+        public IEnumerable<IWithText> SearchText(string keyword)
+        {
+            return SearchText(node => node.Text.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public string GetText(int? index = null, char connector = '\n')
         {
             return ScopeExtensions.GetText(Texts, index);
         }
@@ -278,7 +316,7 @@ namespace XmlPro.Entities
                 (config.MaxNodeLevelToShow, config.AttributesOrderByName, config.ShowDeclarative, config.ShowTexts,
                     config.ShowElements, config.EncodeText, config.EncodeAttributeName, config.EncodeAttributeValue);
         
-            string indent = new string(ToStringIndentChar, level * ToStringIndentMultiplier);
+            string indent = IndentOf(level, config.UnitIndent);
             if (level > maxLevel)
             {
                 // Not print when the level of the node is greater than maxLevel
@@ -291,7 +329,8 @@ namespace XmlPro.Entities
             }
             else if (level == maxLevel || Type != ElementType.Compound)
             {
-                string text = Texts == null ? "" : string.Join(' ', Texts.Select(t => t.ToString()));
+                string text = Texts == null ? "" : 
+                    string.Join(' ', Texts.Select(t => t.ToString()));
                 // When this node is simple or the max level to show, print its own tags and text
                 return $"{indent}{Opening.Print(config)}{text}{Closing?.Print(config)}";
             }
@@ -304,17 +343,22 @@ namespace XmlPro.Entities
                 {
                     return $"{indent}{Opening.Print(config)}{Closing.Print(config)}";
                 }
+                else if (children.All(node => node.Type == ElementType.Text))
+                {
+                    var texts = Texts.Select(t => t.Text);
+                    return $"{indent}{Opening.Print(config)}{string.Join(' ', texts)}{Closing.Print(config)}";
+                }
 
                 PrintConfig childConfig = config with {PrintAsLevel = config.PrintAsLevel + 1};
-                StringBuilder sb = new StringBuilder($"{indent}{Opening.Print(config)}\n");
+                StringBuilder sb = new StringBuilder($"{indent}{Opening.Print(config)}");
                 IEnumerable<string> lines = children.Select(node =>
-                    (node is IElement element) ? $"{element.Print(childConfig)}\n" : node.Print(childConfig));
-                lines.ForEach(l => sb.Append(l));
+                    (node is IElement element) ? $"\n{element.Print(childConfig)}" : node.Print(childConfig));
+                lines.ForEach(line => sb.Append(line));
                 if (sb[^1] != '\n')
                 {
                     sb.AppendLine();
                 }
-                sb.AppendLine($"{indent}{Closing.Print(config)}");
+                sb.Append($"{indent}{Closing.Print(config)}");
                 return sb.ToString();
             }
         }

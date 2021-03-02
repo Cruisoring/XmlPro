@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Text;
 using System.Web;
 using XmlPro.Extensions;
@@ -9,10 +10,14 @@ using XmlPro.Interfaces;
 
 namespace XmlPro.Entities
 {
-    public record StringScope : Scope, IText
+    public record StringScope : Scope, IWithText
     {
-        public static char ToStringIndentChar = ' ';
-        public static int ToStringIndentMultiplier = 2;
+        public static string DefaultIndent = "  ";
+
+        public static string IndentOf(int times, string unitIndent=null)
+        {
+            return string.Concat(Enumerable.Repeat(unitIndent ?? DefaultIndent, times));
+        }
 
         public static readonly HashSet<char> WhiteSpaces = new HashSet<char>() {' ', '\n', '\r', '\t'};
 

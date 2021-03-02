@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <bookstore>
-  Awesome books
-  <book category="children">
+  Awesome books<book category="children">
     <title>Stories for kids</title>
     <author>Alice Brown</author>
     <year>2005</year>

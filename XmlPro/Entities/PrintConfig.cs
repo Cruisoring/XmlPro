@@ -10,6 +10,7 @@ namespace XmlPro.Entities
     {
         public static int? DefaultPrintAsLevel = null;
         public static int DefaultMaxNodeLevelToShow = 3;
+        public static string DefaultUnitIndent = null;
 
         public static bool DefaultShowDeclarative = true;
         public static bool DefaultShowTexts = true;
@@ -26,6 +27,8 @@ namespace XmlPro.Entities
         /// The maximum level of node to be shown.
         /// </summary>
         public int MaxNodeLevelToShow { get; init; } = DefaultMaxNodeLevelToShow;
+
+        public string UnitIndent { get; init; } = DefaultUnitIndent;
 
         /// <summary>
         /// Display Attributes in order of their names if True, otherwise keep the original order in opening tags.

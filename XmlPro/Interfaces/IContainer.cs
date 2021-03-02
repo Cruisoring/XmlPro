@@ -9,14 +9,8 @@ namespace XmlPro.Interfaces
     /// <summary>
     /// Interface to represent XML nodes that can contain other nodes of <c>IElement</c> or <c>IText</c> types.
     /// </summary>
-    public interface IContainer : IScope
+    public interface IContainer : IScope, IWithLevel
     {
-        /// <summary>
-        /// Level of the current <c>IContained</c> node relative to the root, it shall be <c>Level</c> of <c>Parent</c> plus one.
-        /// Can be used as filter or by <code>ToStringWithConfig()</code>.
-        /// </summary>
-        public int Level { get; init; }
-
         /// <summary>
         /// Contained <c>IElement</c> nodes as a list with original order for easier filtering and accessing.
         /// </summary>
@@ -25,7 +19,7 @@ namespace XmlPro.Interfaces
         /// <summary>
         /// Contained <c>IText</c> nodes as a list with original order for easier filtering and accessing.
         /// </summary>
-        public IList<IText> Texts { get; }
+        public IList<IWithText> Texts { get; }
 
         /// <summary>
         /// Indexer to get attribute by name. If AttributeBestMatch is set to true, then attribute name can be case-insensitive.
@@ -42,18 +36,19 @@ namespace XmlPro.Interfaces
         public IElement this[int childIndex] { get; }
 
         /// <summary>
-        /// Indexer to get qualified children by filter.
+        /// Indexer to get elements qualified by filter.
         /// </summary>
-        /// <param name="filter">The filter to get the concerned children that can be <c>XElement</c> or <c>XText</c> in their original orders.</param>
-        /// <param name="recursively">Apply filter to the children of the <c>IContainer</c> to get matched nodes recursively.</param>
+        /// <param name="filter">The filter to get the concerned <c>IElement</c>s in their original orders.</param>
+        /// <param name="recursively">Apply filter to the children of the <c>IElement</c> to get matched nodes recursively.</param>
         /// <returns>All children matching the given condition.</returns>
-        // public IEnumerable<IContained> this[Predicate<IContained> filter, bool recursively = false] { get; }
+        public IEnumerable<IElement> this[Predicate<IElement> filter, bool recursively = false] { get; }
 
         /// <summary>
         /// Get the text of this entity as either the single piece of text with index identified, or the joined if index is null. 
         /// </summary>
         /// <param name="index">Null for all text joined by ' ', positive number for Nth text, negative index to get last Nth text.</param>
+        /// <param name="connector">Applied only when <c>index</c> is null to join all <c>XText</c> strings together.</param>
         /// <returns>Null if no text nodes contained, or decoded text of either the concerned piece with Non-null index, or joined text as a whole.</returns>
-        public string GetText(int? index = null);
+        public string GetText(int? index = null, char connector = '\n');
     }
 }

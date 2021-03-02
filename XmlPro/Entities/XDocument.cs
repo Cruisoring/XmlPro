@@ -33,11 +33,11 @@ namespace XmlPro.Entities
 
         public IList<IElement> Elements { get; init; }
 
-        public IList<IText> Texts { get; }
+        public IList<IWithText> Texts { get; }
 
         public XElement Root { get; init; }
 
-        public XDocument([NotNull] char[] context, [NotNull] IList<IElement> elements, IList<IText> texts = null) : 
+        public XDocument([NotNull] char[] context, [NotNull] IList<IElement> elements, IList<IWithText> texts = null) : 
             base(context, 0, context.Length)
         {
             Level = 0;
@@ -52,9 +52,22 @@ namespace XmlPro.Entities
 
         public IElement this[int childIndex] => Root[childIndex];
 
-        public string GetText(int? index = null)
+        public IEnumerable<IElement> this[Predicate<IElement> filter, bool recursively=false] =>
+            Root[filter, recursively];
+
+        public string GetText(int? index = null, char connector = '\n')
         {
-            return ScopeExtensions.GetText(Texts, index);
+            return ScopeExtensions.GetText(Texts, index, connector);
+        }
+
+        public string InnerText
+        {
+            get
+            {
+                IEnumerable<IContained> allTexts = this[node => node.Type == ElementType.Text, true];
+                IEnumerable<string> strings = allTexts.Select(node => $"{IndentOf(node.Level)}{node.Text}");
+                return string.Join('\n', strings);
+            }
         }
     }
 }

@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Text.Json;
+using XmlPro.Configs;
 using XmlPro.Enums;
 using XmlPro.Extensions;
 using XmlPro.Interfaces;
@@ -13,9 +15,7 @@ namespace XmlPro.Entities
 {
     public record XElement: StringScope, IElement
     {
-        public static bool SkipEmptyText = true;
         public static bool AttributeBestMatch = true;
-        public static bool DefaultIncludingElements = false;
 
         /// <summary>
         /// The PrintConfig shall serialize the content of the XDocument as a legal XML string.
@@ -23,42 +23,43 @@ namespace XmlPro.Entities
         public static readonly PrintConfig DefaultElementConfig = new PrintConfig()
         {
             PrintAsLevel = 0,
-            MaxNodeLevelToShow = 4,
+            MaxLevelToShow = 1,
 
             ShowDeclarative = false,
             ShowTexts = true,
             ShowElements = true,
-
             AttributesOrderByName = true,
-            EncodeText = false,
+            EncodeContent = false,
             EncodeAttributeName = false,
             EncodeAttributeValue = false
         };
 
-
-
-        public static IEnumerable<IContained> Parse([NotNull] char[] context, int since, int? until = null, IContainer parent=null)
+        public static IEnumerable<IScope> GetEnumerator([NotNull] char[] context, ParseConfig config = null)
         {
-            Stack<XTag> unpaired = new Stack<XTag>();
-            IList<IWithText> texts = null;
-            IList<IElement> elements = new List<IElement>();
-            Stack<(IList<IElement>, IList<IWithText>)> stack = new Stack<(IList<IElement>, IList<IWithText>)>();
-            int level = parent?.Level + 1 ?? 0;
+            config ??= new ParseConfig();
+            //Get all settings for parsing
+            (int level, int tagEnd, int until, bool preserveWhitespace, bool trimText) = (
+                config.StartLevel,
+                config.Scope?.Begin ?? 0, 
+                config.Scope?.End ?? context.Length,
+                config.PreserveWhitespace,
+                config.TrimTextNodes);
 
-            int lastEnd = since;
-            IEnumerable<XTag> tags = XTag.ParseTags(context, since, until);
+            IEnumerable<XTag> tags = XTag.GetEnumerator(context, config);
             foreach (var tag in tags)
             {
-                if (tag.Begin > lastEnd+1)
+                if (tag.Begin > tagEnd + 1)
                 {
-                    string text = new string(context, lastEnd, tag.Begin-lastEnd);
-                    if (!SkipEmptyText || text.Trim().Length > 0)
+                    string text = new string(context, tagEnd, tag.Begin - tagEnd);
+                    string trimmed = text.Trim();
+                    if (preserveWhitespace || trimmed.Length > 0)
                     {
-                        if (texts == null)
-                        {
-                            texts = new List<IWithText>();
-                        }
-                        texts.Add(new XText(context, level, lastEnd, tag.Begin));
+                        yield return new XTextBlock(
+                            context, 
+                            level, 
+                            trimText ? trimmed : text, //Keep content as trimmed if trimText is TRUE
+                            tagEnd, 
+                            tag.Begin);
                     }
                 }
                 switch (tag.Type)
@@ -68,47 +69,109 @@ namespace XmlPro.Entities
                     case TagType.CDATA:
                     case TagType.DocType:
                     case TagType.Remark:
-                        var element = new XElement(context, tag, level);
-                        elements.Add(element);
+                        yield return new XElement(context, tag, level);
                         break;
                     case TagType.Opening:
-                        unpaired.Push(tag);
-                        stack.Push((elements, texts));
-                        (elements, texts) = (new List<IElement>(), null);
+                        yield return tag;
                         level++;
                         break;
                     case TagType.Closing:
-                        var opening = unpaired.Pop();
+                        yield return tag;
                         level--;
-                        if (opening == null)
-                        {
-                            throw new FormatException($"Missing opening tag <{tag.Name}>");
-                        }
-                        else if (opening.Name != tag.Name)
-                        {
-                            throw new FormatException($"Elements are not properly nested: </{tag.Name}> cannot pair with <{opening.Name}>");
-                        }
-                        else
-                        {
-                            var newElement = new XElement(context, opening, tag, level, elements, texts);
-                            (elements, texts) = stack.Pop();
-                            elements.Add(newElement);
-                        }
                         break;
                     default:
                         throw new ArgumentException($"Unexpected tag of type {tag.Type}");
                 }
 
-                lastEnd = tag.End;
+                tagEnd = tag.End;
+            }
+        }
+
+
+        public static IList<IContained> Conclude([NotNull] char[] context, ParseConfig config = null)
+        {
+            // Trim Whitespace as default parsing option
+            config ??= XDocument.DefaultHtmlParseConfig;
+
+            //Get all settings and local variables for parsing
+            (int level, IContainer parent, IList<IElement> elements, IList<ITextOnly> texts) = (
+                config.StartLevel,
+                config.Root,
+                new List<IElement>(),
+                null);
+
+            Stack<XTag> unpaired = new Stack<XTag>();
+            Stack<(IContainer, IList<IElement>, IList<ITextOnly>)> stack = new Stack<(IContainer, IList<IElement>, IList<ITextOnly>)>();
+
+            IEnumerable<IScope> parts = GetEnumerator(context, config);
+            foreach (var part in parts)
+            {
+                if (part is IElement element)
+                {
+                    element.Parent = parent;
+                    elements.Add(element);
+                }
+                else if (part is XTextBlock text)
+                {
+                    if (texts == null)
+                    {
+                        texts = new List<ITextOnly>();
+                    }
+                    text.Parent = parent;
+                    texts.Add(text);
+                }
+                else if (part is XTag tag)
+                {
+                    if (tag.Type == TagType.Opening)
+                    {
+                        unpaired.Push(tag);
+                        level++;
+                        stack.Push((parent, elements, texts));
+                        (parent, elements, texts) = (null, new List<IElement>(), null);
+                    }
+                    else if (tag.Type == TagType.Closing)
+                    {
+                        var opening = unpaired.Pop();
+                        level--;
+                        if (opening.Name != tag.Name)
+                        {
+                            throw new FormatException($"Elements are not properly nested: </{tag.Name}> cannot pair with <{opening.Name}>");
+                        }
+
+                        var newElement = new XElement(context, opening, tag, level, elements, texts);
+                        (parent, elements, texts) = stack.Pop();
+                        newElement.Parent = parent;
+                        elements.Add(newElement);
+                    }
+                    else
+                    {
+                        throw new ArgumentException($"Unexpected tag of type {tag.Type}");
+                    }
+                }
+                else
+                {
+                    throw new NotImplementedException($"Unhandled part: {part}");
+                }
             }
 
             if (unpaired.Count > 0)
             {
                 throw new ArgumentException("Failed to pair all tags.");
             }
-
-            return elements;
+            else if (texts == null)
+            {
+                return elements.Cast<IContained>().ToList();
+            }
+            else
+            {
+                List<IContained> nodes = new List<IContained>();
+                nodes.AddRange(elements);
+                nodes.AddRange(texts);
+                nodes.Sort();
+                return nodes;
+            }
         }
+
 
         /// <summary>
         /// The container of this node, could be updated by the closing tag of the <c>Parent</c> node.
@@ -131,9 +194,9 @@ namespace XmlPro.Entities
         public XTag Closing { get; init; }
 
         public IList<IElement> Elements { get; init; }
-        public IList<IWithText> Texts { get; init; }
+        public IList<ITextOnly> Texts { get; init; }
 
-        protected IContained[] nodes;
+        protected IContained[] Nodes;
 
         public Dictionary<string, string> Attributes { get; init; }
 
@@ -163,11 +226,11 @@ namespace XmlPro.Entities
             );
             Elements = null;
             Texts = null;
-            nodes = null;
+            Nodes = null;
         }
 
         public XElement([NotNull] char[] context, [NotNull] XTag opening, [NotNull] XTag closing, int level,
-            IList<IElement> elements = null, IList<IWithText> texts = null) : 
+            IList<IElement> elements = null, IList<ITextOnly> texts = null) : 
             base(context, opening.Begin, closing.End)
         {
             Opening = opening;
@@ -194,17 +257,20 @@ namespace XmlPro.Entities
             Texts = texts;
             if (Texts == null)
             {
-                nodes = elements?.Cast<IContained>().ToArray();
+                Nodes = elements?.Cast<IContained>().ToArray();
             }
             else if (elements == null)
             {
-                nodes = texts?.Cast<IContained>().ToArray();
+                Nodes = texts?.Cast<IContained>().ToArray();
             }
             else
             {
-                nodes = elements.Cast<IContained>().Union(texts.Cast<IContained>()).ToArray();
-                Array.Sort(nodes);
+                Nodes = elements.Cast<IContained>().Union(texts.Cast<IContained>()).ToArray();
+                Array.Sort(Nodes);
             }
+
+            // Set all children' parent to this
+            Nodes?.ForEach(node => node.Parent = this);
         }
 
         public string this[string attrName]
@@ -248,7 +314,7 @@ namespace XmlPro.Entities
             }
         }
 
-        public IEnumerable<IElement> this[Predicate<IElement> predicate, bool recursively = false]
+        public IEnumerable<IElement> this[Predicate<IElement> predicate, bool recursively = true]
         {
             get
             {
@@ -278,7 +344,7 @@ namespace XmlPro.Entities
 
         public IEnumerable<IWithText> SearchText(Predicate<IWithText> predicate, bool resusively = true)
         {
-            foreach (var node in nodes)
+            foreach (var node in Nodes)
             {
                 if (resusively && node is XElement element)
                 {
@@ -287,7 +353,7 @@ namespace XmlPro.Entities
                         yield return matchedChildText;
                     }
                 }
-                else if (resusively && node is XText text)
+                else if (resusively && node is XTextBlock text)
                 {
                     if (predicate(text))
                     {
@@ -299,7 +365,7 @@ namespace XmlPro.Entities
 
         public IEnumerable<IWithText> SearchText(string keyword)
         {
-            return SearchText(node => node.Text.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            return SearchText(node => node.OuterText.Contains(keyword, StringComparison.OrdinalIgnoreCase));
         }
 
         public string GetText(int? index = null, char connector = '\n')
@@ -307,60 +373,126 @@ namespace XmlPro.Entities
             return ScopeExtensions.GetText(Texts, index);
         }
 
+        public IEnumerable<string> AsIndented(
+            int maxLevel,
+            Predicate<int> showLevel,
+            bool attrOrderByName,
+            bool showDeclarative, bool showTexts, bool showElements,
+            bool trimText,
+            bool encodeContent, bool encodeAttrName, bool encodeAttrValue,
+            string currentIndent, string moreIndent, string childConnector)
+        {
+            bool showThisLevel = showLevel == null || showLevel(Level);
+            string opening = Opening.AsString(attrOrderByName, encodeAttrName, encodeAttrValue);
+            string closing = Closing?.AsString(attrOrderByName, encodeAttrName, encodeAttrValue) ?? "";
+            // Stop quickly with simple Elements or Level >= maxLevel as specified in PrintConfig.LevelsToShow
+            if (Level == maxLevel || Type != ElementType.Compound || !showElements)
+            {
+                if (showThisLevel && (showDeclarative || Type != ElementType.Declarative))
+                {
+                    yield return $"{currentIndent}{opening}{closing}";
+                }
+                yield break;
+            }
+            else if (Level > maxLevel)
+            {
+                yield break;
+            }
+
+            //Now Level < maxLevel && Type == ElementType.Compound
+            string childIndent = currentIndent + moreIndent;
+            bool showNextLevel = showLevel == null || showLevel(Level + 1);
+            // Try to show element as a single line with/without text and break
+            if (Elements == null || Elements.Count == 0)
+            {
+                if (!showTexts || !showNextLevel || Texts==null || Texts.Count == 0)
+                {
+                    if(showThisLevel)
+                    {
+                        yield return $"{currentIndent}{opening}{closing}";
+                    }
+                    yield break;
+                }
+                else if (Texts.Count == 1)
+                {
+                    string content = encodeContent ? Encode(Texts[0].Content) : Texts[0].Content;
+                    content = trimText ? content.Trim() : content;
+                    yield return showThisLevel ? $"{currentIndent}{opening}{content}{closing}" : $"{childIndent}{content}";
+                    yield break;
+                }
+            }
+
+            //Since no yield break, show element with indented texts/elements
+            if(showThisLevel)
+            {
+                yield return $"{currentIndent}{opening}";
+            }
+            foreach (var node in Nodes)
+            {
+                if (node is ITextOnly text)
+                {
+                    if (showTexts && showNextLevel)
+                    {
+                        string content = encodeContent ? Encode(Texts[0].Content) : Texts[0].Content;
+                        content = trimText ? content.Trim() : content;
+                        yield return $"{childIndent}{content}";
+                    }
+                }
+                else if (node is IElement element)
+                {
+                    if (showElements)
+                    {
+                        IEnumerable<string> lines = element.AsIndented(maxLevel, showLevel, attrOrderByName,
+                            showDeclarative, showTexts, showElements, trimText, encodeContent, encodeAttrName,
+                            encodeAttrValue, childIndent, moreIndent, childConnector);
+                        foreach (var line in lines)
+                        {
+                            yield return line;
+                        }
+                    }
+                }
+                else
+                {
+                    throw new NotImplementedException("Unexpected scenario happened.");
+                }
+            }
+            if (showThisLevel)
+            {
+                yield return $"{currentIndent}{closing}";
+            }
+        }
+
         public string Print(PrintConfig config = null)
         {
             config ??= DefaultElementConfig;
+
             int level = config.PrintAsLevel ?? Level;
-            var (maxLevel, attrOrdered, showDeclarative, showTexts, showElements, encodeText, encodeAttrName,
+            var (maxLevel, unitIndent, childConnector,
+                    showLevel,
+                    attrOrderByName, 
+                    showDeclarative, showTexts, showElements, trimText,
+                    encodeContent, encodeAttrName,
                     encodeAttrValue) =
-                (config.MaxNodeLevelToShow, config.AttributesOrderByName, config.ShowDeclarative, config.ShowTexts,
-                    config.ShowElements, config.EncodeText, config.EncodeAttributeName, config.EncodeAttributeValue);
+                (
+                    LevelsToShow: config.MaxLevelToShow, config.UnitIndent, config.TextConnector,
+                    config.ShowLevel ?? PrintConfig.NoMoreThan(config.MaxLevelToShow),
+                    config.AttributesOrderByName, 
+                    config.ShowDeclarative, 
+                    config.ShowTexts,
+                    config.ShowElements, 
+                    config.TrimTextContent,
+                    config.EncodeContent, 
+                    config.EncodeAttributeName, 
+                    config.EncodeAttributeValue);
         
-            string indent = IndentOf(level, config.UnitIndent);
-            if (level > maxLevel)
-            {
-                // Not print when the level of the node is greater than maxLevel
-                return "";
-            }
-            else if (Type == ElementType.Declarative && !showDeclarative)
-            {
-                // Not print when this node is Declarative and that is not allowed to print
-                return "";
-            }
-            else if (level == maxLevel || Type != ElementType.Compound)
-            {
-                string text = Texts == null ? "" : 
-                    string.Join(' ', Texts.Select(t => t.ToString()));
-                // When this node is simple or the max level to show, print its own tags and text
-                return $"{indent}{Opening.Print(config)}{text}{Closing?.Print(config)}";
-            }
-            else
-            {
-                IList<IContained> children = nodes.Where(node =>
-                    config.ShowDeclarative || node.Type != ElementType.Declarative).ToList();
+            string indent = PrintConfig.IndentOf(level, unitIndent);
 
-                if (children.Count == 0)
-                {
-                    return $"{indent}{Opening.Print(config)}{Closing.Print(config)}";
-                }
-                else if (children.All(node => node.Type == ElementType.Text))
-                {
-                    var texts = Texts.Select(t => t.Text);
-                    return $"{indent}{Opening.Print(config)}{string.Join(' ', texts)}{Closing.Print(config)}";
-                }
-
-                PrintConfig childConfig = config with {PrintAsLevel = config.PrintAsLevel + 1};
-                StringBuilder sb = new StringBuilder($"{indent}{Opening.Print(config)}");
-                IEnumerable<string> lines = children.Select(node =>
-                    (node is IElement element) ? $"\n{element.Print(childConfig)}" : node.Print(childConfig));
-                lines.ForEach(line => sb.Append(line));
-                if (sb[^1] != '\n')
-                {
-                    sb.AppendLine();
-                }
-                sb.Append($"{indent}{Closing.Print(config)}");
-                return sb.ToString();
-            }
+            string[] lines = AsIndented(maxLevel, showLevel, attrOrderByName,
+                showDeclarative, showTexts, showElements, trimText,
+                encodeContent, encodeAttrName,
+                encodeAttrValue, indent, unitIndent, childConnector).ToArray();
+            string result = lines.Length==0 ? "" : string.Join(childConnector, lines);
+            return result;
         }
 
         public override string ToString()

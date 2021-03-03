@@ -12,11 +12,11 @@ namespace XmlPro.Interfaces
         /// <summary>
         /// Original content of the <c>IText</c> instance that might contain decoded characters.
         /// </summary>
-        string RawText { get; }
+        string RawOuterText { get; }
 
         /// <summary>
         /// Content of the <c>IText</c> instance for display purposes.
         /// </summary>
-        string Text { get; }
+        string OuterText { get; }
     }
 }

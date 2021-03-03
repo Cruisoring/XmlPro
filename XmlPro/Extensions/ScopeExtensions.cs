@@ -41,7 +41,7 @@ namespace XmlPro.Extensions
         public static IElement AsElement([NotNull] string context, int level)
         {
             char[] chars = context.ToCharArray();
-            IEnumerable<IContained> nodes = XElement.Parse(chars, 0, chars.Length, null);
+            IEnumerable<IContained> nodes = XElement.Conclude(chars);
             XElement first = nodes.First() as XElement;
             return first with { Level = level };
         }
@@ -99,7 +99,7 @@ namespace XmlPro.Extensions
             return new string(source, scope.Begin, scope.Length);
         }
 
-        public static string GetText(IList<IWithText> texts, int? index=null, char connector = '\n')
+        public static string GetText(IList<ITextOnly> texts, int? index=null, char connector = '\n')
         {
             if (texts == null)
             {
@@ -107,7 +107,7 @@ namespace XmlPro.Extensions
             }
             else if (index == null)
             {
-                return string.Join(connector, texts.Select(t => t.Text));
+                return string.Join(connector, texts.Select(t => t.OuterText));
             }
             else if (texts.Count == 0 || index >= texts.Count || index < -texts.Count)
             {
@@ -115,7 +115,7 @@ namespace XmlPro.Extensions
             }
             else
             {
-                return texts[index.Value < 0 ? texts.Count + index.Value : index.Value].Text;
+                return texts[index.Value < 0 ? texts.Count + index.Value : index.Value].OuterText;
             }
         }
 

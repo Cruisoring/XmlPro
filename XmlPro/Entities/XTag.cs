@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using XmlPro.Configs;
 using XmlPro.Enums;
 using XmlPro.Extensions;
 using XmlPro.Helpers;
@@ -36,17 +37,16 @@ namespace XmlPro.Entities
         public static readonly TagType[] DeclarativeTypes = new[]
             {TagType.Declaration, TagType.CDATA, TagType.DocType, TagType.Remark};
 
-        public static readonly Dictionary<TagType, (string, string)> TagFormats =
-            new Dictionary<TagType, (string, string)>()
-            {
-                {TagType.Declaration, ("<?", DELCARE_END)},
-                {TagType.Remark, (REMARK_START, REMARK_END)},
-                {TagType.DocType, (DocType_START, DocType_END)},
-                {TagType.CDATA, (CDATA_START, CDATA_END)},
+        public static readonly Dictionary<TagType, (string, string, string)> TagFormats =
+            new() {
+                {TagType.Declaration, ("<?", DELCARE_END, "#declaration")},
+                {TagType.Remark, (REMARK_START, REMARK_END, "#remark")},
+                {TagType.DocType, (DocType_START, DocType_END, "#doctype")},
+                {TagType.CDATA, (CDATA_START, CDATA_END, "#cdata")},
 
-                {TagType.Opening, ("<", ">")},
-                {TagType.Closing, ("</", ">")},
-                {TagType.Sound, ("<", " />")},
+                {TagType.Opening, ("<", ">", "")},
+                {TagType.Closing, ("</", ">", "")},
+                {TagType.Sound, ("<", " />", "")},
             };
 
         /// <summary>
@@ -55,19 +55,20 @@ namespace XmlPro.Entities
         public static readonly PrintConfig DefaultTagConfig = new PrintConfig()
         {
             AttributesOrderByName = true,
-            EncodeText = false,
+            EncodeContent = false,
             EncodeAttributeName = false,
             EncodeAttributeValue = false
         };
 
 
-        public static IEnumerable<XTag> ParseTags([NotNull] char[] context, int since, int? until = null)
+        public static IEnumerable<XTag> GetEnumerator([NotNull] char[] context, ParseConfig config = null)
         {
+            config ??= new ParseConfig();
+            (int since, int until) = (config.Scope?.Begin ?? 0, config.Scope?.End ?? context.Length);
             var (tagType, tagBegin, tagEnd, closingPos, closing, name) = 
                 (TagType.Unknown, -1, -1, -1, ">", "");
 
-            int last = until ?? context.Length;
-            for (int i = since; i < last; i++)
+            for (int i = since; i < until; i++)
             {
                 char current = context[i];
                 if (current == TagBegin)
@@ -142,7 +143,7 @@ namespace XmlPro.Entities
                     if (closingPos == -1)
                     {
                         throw new FormatException(
-                            $"XML {tagType} missing '{closing}': {new string(context, tagBegin, last - tagBegin)}");
+                            $"XML {tagType} missing '{closing}': {new string(context, tagBegin, until - tagBegin)}");
                     } 
                     else if (tagType == TagType.Opening && context[closingPos - 1] == TagClosing)
                     {
@@ -165,7 +166,8 @@ namespace XmlPro.Entities
                     }
                     else
                     {
-                        yield return new XTag(context, tagBegin, tagEnd, tagType, name, XAttribute.ParseAttributes(context, nameEnding, tagEnd));
+                        yield return new XTag(context, tagBegin, tagEnd, tagType, name, 
+                            XAttribute.GetEnumerator(context, nameEnding, tagEnd));
 
                     }
 
@@ -206,43 +208,50 @@ namespace XmlPro.Entities
         public string Print(PrintConfig config = null)
         {
             config ??= DefaultTagConfig;
-            var (start, end) = TagFormats[Type];
-            string name = config.EncodeAttributeName ? Encode(Name) : Name;
+            var (showDeclarative, sortAttr, encodeAttrName, encodeAttrValue) = (
+                config.ShowDeclarative,
+                config.AttributesOrderByName, config.EncodeAttributeName, config.EncodeAttributeValue
+            );
 
-            if (DeclarativeTypes.Contains(Type))
+            if (DeclarativeTypes.Contains(Type) && !showDeclarative)
             {
-                if (config.ShowDeclarative)
-                {
-                    return Decode(RawText);
-                }
-                else
-                {
-                    return $"{start}{name}{end}";
-                }
+                var (start, end, identifier) = TagFormats[Type];
+                return $"{start}{identifier}{end}";
             }
-            if (Attributes.Length == 0)
+
+            return AsString(sortAttr, encodeAttrName, encodeAttrValue);
+        }
+
+        public string AsString(bool attrOrderByName, bool encodeAttrName, bool encodeAttrValue)
+        {
+            var (start, end, identifier) = TagFormats[Type];
+            string name = encodeAttrName ? Encode(Name) : Name;
+            if (Attributes == null || Attributes.Length == 0)
             {
                 return $"{start}{name}{end}";
             }
 
             XAttribute[] attributes = Attributes;
-            if (config.AttributesOrderByName)
+            if (attrOrderByName)
             {
                 attributes = Attributes.ToArray();
                 Array.Sort(attributes, attributes.Select(a => a.Name).ToArray());
             }
 
-            StringBuilder sb = new StringBuilder($"{start}{name}");
-            foreach (var attribute in attributes)
+            string[] attrStrings = attributes.Select(a =>
             {
-                sb.Append(" " + (config.EncodeAttributeName ? Encode(attribute.Name) : attribute.Name));
-                sb.Append(attribute.Value == null
-                    ? ""
-                    : "=\"" + (config.EncodeAttributeValue ? Encode(attribute.Value) : attribute.Value) + '"');
-            }
+                string attrName = encodeAttrName ? Encode(a.Name) : Name;
+                if (a.Value == null)
+                {
+                    return attrName;
+                }
 
-            sb.Append(end);
-            return sb.ToString();
+                string attrValue = encodeAttrValue ? Encode(a.Value) : a.Value;
+                return $"{attrName}=\"{attrValue}\"";
+            }).ToArray();
+
+
+            return $"{start}{name} {string.Join(' ', attrStrings)}{end}";
         }
     }
 }

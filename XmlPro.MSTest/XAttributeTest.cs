@@ -16,30 +16,30 @@ namespace XmlPro.Test
         [TestMethod]
         public void TestEmptyTags()
         {
-            XAttribute[] results = XAttribute.ParseAttributes("<td>".ToCharArray(), 3).ToArray();
+            XAttribute[] results = XAttribute.GetEnumerator("<td>".ToCharArray(), 3).ToArray();
             Assert.IsTrue(results.Length == 0);
 
-            results = XAttribute.ParseAttributes("<td />".ToCharArray(), 3).ToArray();
+            results = XAttribute.GetEnumerator("<td />".ToCharArray(), 3).ToArray();
             Assert.IsTrue(results.Length == 0);
         }
 
         [TestMethod]
         public void TestTagsWithSingleAttribute()
         {
-            XAttribute[] results = XAttribute.ParseAttributes("<td x=\"abc\">".ToCharArray(), 3).ToArray();
+            XAttribute[] results = XAttribute.GetEnumerator("<td x=\"abc\">".ToCharArray(), 3).ToArray();
             Assert.IsTrue(results.Length == 1 && results[0].ToString() == "x=\"abc\"");
-            Console.WriteLine(results[0].RawText);
+            Console.WriteLine(results[0].RawOuterText);
             
-            results = XAttribute.ParseAttributes("<td  x=\"abc\" />".ToCharArray(), 3).ToArray();
+            results = XAttribute.GetEnumerator("<td  x=\"abc\" />".ToCharArray(), 3).ToArray();
             Assert.IsTrue(results.Length == 1 && results[0].ToString() == "x=\"abc\"");
-            Console.WriteLine(results[0].RawText);
+            Console.WriteLine(results[0].RawOuterText);
         }
 
         [TestMethod]
         public void TestGetMultipleAttributes()
         {
             char[] chars = "<IMG align=\"left\" src = \"http://www.w3.org/Icons/WWW/w3c_home\" /> ".ToCharArray();
-            XAttribute[] results = XAttribute.ParseAttributes(chars, 4).ToArray();
+            XAttribute[] results = XAttribute.GetEnumerator(chars, 4).ToArray();
             Assert.IsTrue(results.Length == 2
                           && results[0].ToString() == "align=\"left\""
                           && results[1].ToString() == "src=\"http://www.w3.org/Icons/WWW/w3c_home\""
@@ -51,7 +51,7 @@ namespace XmlPro.Test
         public void TestAttributesWithSpecialChars()
         {
             char[] chars = "<node from=\"&lt;tom@hcc.com&gt;\" amount\u00a5=\"&gt;500\">".ToCharArray();
-            XAttribute[] results = XAttribute.ParseAttributes(chars, 5).ToArray();
+            XAttribute[] results = XAttribute.GetEnumerator(chars, 5).ToArray();
             Assert.IsTrue(results.Length == 2
                           && results[0].ToString() == "from=\"<tom@hcc.com>\""
                           && results[1].ToString() == "amount¥=\">500\"");
@@ -62,7 +62,7 @@ namespace XmlPro.Test
         public void TestAttributesWithoutValues()
         {
             char[] chars = "<node \tfrom  amount\u00a5  >".ToCharArray();
-            XAttribute[] results = XAttribute.ParseAttributes(chars, 5).ToArray();
+            XAttribute[] results = XAttribute.GetEnumerator(chars, 5).ToArray();
             Assert.IsTrue(results.Length == 2
                           && results[0].ToString() == "from"
                           && results[1].ToString() == "amount¥");

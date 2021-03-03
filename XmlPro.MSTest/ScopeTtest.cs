@@ -38,7 +38,7 @@ namespace XmlPro.Test
         {
             var chars = "Happy Birthday".ToCharArray();
             var scope = new StringScope(chars, 3, 5);
-            TestHelper.AssertEqual("py", scope.RawText);
+            TestHelper.AssertEqual("py", scope.RawOuterText);
         }
 
 

@@ -1,34 +1,63 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
-namespace XmlPro.Entities
+namespace XmlPro.Configs
 {
     public record PrintConfig
     {
         public static int? DefaultPrintAsLevel = null;
-        public static int DefaultMaxNodeLevelToShow = 3;
-        public static string DefaultUnitIndent = null;
+        public static int DefaultLevelsToShow = 3;
 
         public static bool DefaultShowDeclarative = true;
         public static bool DefaultShowTexts = true;
+        public static bool DefaultTrimTextContent = true;
         public static bool DefaultShowElements = true;
         public static bool DefaultEncodeText = false;
 
         public static bool DefaultAttributesOrderByName = true;
         public static bool DefaultEncodeAttributeName = false;
         public static bool DefaultEncodeAttributeValue = false;
+        public static string DefaultUnitIndent = new string(' ', 2);
+        public static string DefaultTextConnector = "\n";
 
+
+        public static Predicate<int> NoMoreThan(int maxLevel) => (int level) => level <= maxLevel;
+
+        private static readonly Dictionary<(string, int), string> CachedIndents = new Dictionary<(string, int), string>();
+        public static string IndentOf(int times, string unit=null)
+        {
+            unit ??= DefaultUnitIndent;
+            if (!CachedIndents.ContainsKey((unit, times)))
+            {
+                string indent = string.Concat(Enumerable.Repeat(unit, times));
+                CachedIndents.Add((unit, times), indent);
+            }
+
+            return CachedIndents[(unit, times)];
+        }
+
+        /// <summary>
+        /// Specify Level to print with corresponding indent.
+        /// </summary>
         public int? PrintAsLevel { get; init; } = DefaultPrintAsLevel;
 
         /// <summary>
-        /// The maximum level of node to be shown.
+        /// The maximum levels of node to be printed.
         /// </summary>
-        public int MaxNodeLevelToShow { get; init; } = DefaultMaxNodeLevelToShow;
+        public int MaxLevelToShow { get; init; } = DefaultLevelsToShow;
 
+        /// <summary>
+        /// Empty string leading inserted as a single indent.
+        /// </summary>
         public string UnitIndent { get; init; } = DefaultUnitIndent;
+
+        /// <summary>
+        /// Predicate of any given level to be shown or not.
+        /// </summary>
+        public Predicate<int> ShowLevel { get; init; } = null;
 
         /// <summary>
         /// Display Attributes in order of their names if True, otherwise keep the original order in opening tags.
@@ -46,6 +75,11 @@ namespace XmlPro.Entities
         public bool ShowTexts { get; init; } = DefaultShowTexts;
 
         /// <summary>
+        /// Indicate if each <c>ITextOnly</c> shall be trimmed before showing.
+        /// </summary>
+        public bool TrimTextContent { get; init; } = DefaultTrimTextContent;
+
+        /// <summary>
         /// True to include contained XElements as indented strings.
         /// </summary>
         public bool ShowElements { get; init; } = DefaultShowElements;
@@ -53,7 +87,7 @@ namespace XmlPro.Entities
         /// <summary>
         /// True to encode the text contents, otherwise show decoded texts that could make output as invalid XML.
         /// </summary>
-        public bool EncodeText { get; init; } = DefaultEncodeText;
+        public bool EncodeContent { get; init; } = DefaultEncodeText;
 
         /// <summary>
         /// True to encode the attribute names, otherwise show decoded texts that could make output as invalid XML.
@@ -64,5 +98,11 @@ namespace XmlPro.Entities
         /// True to encode the attribute values, otherwise show decoded texts that could make output as invalid XML.
         /// </summary>
         public bool EncodeAttributeValue { get; init; } = DefaultEncodeAttributeValue;
+
+        /// <summary>
+        /// Connector of children nodes.
+        /// </summary>
+        public string TextConnector { get; init; } = DefaultTextConnector;
+
     }
 }

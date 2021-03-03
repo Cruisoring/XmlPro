@@ -11,7 +11,9 @@ namespace XmlPro.Interfaces
     /// </summary>
     public interface IElement : IContained, IContainer
     {
-        public string Name { get; }
-
+        /// <summary>
+        /// Name of the element that is also the name of the opening tag.
+        /// </summary>
+        string Name { get; }
     }
 }

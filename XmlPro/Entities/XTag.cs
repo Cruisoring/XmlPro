@@ -61,7 +61,7 @@ namespace XmlPro.Entities
         };
 
 
-        public static IEnumerable<XTag> GetEnumerator([NotNull] char[] context, ParseConfig config = null)
+        public static IEnumerable<XTag> Generate([NotNull] char[] context, ParseConfig config = null)
         {
             config ??= new ParseConfig();
             (int since, int until) = (config.Scope?.Begin ?? 0, config.Scope?.End ?? context.Length);
@@ -167,7 +167,7 @@ namespace XmlPro.Entities
                     else
                     {
                         yield return new XTag(context, tagBegin, tagEnd, tagType, name, 
-                            XAttribute.GetEnumerator(context, nameEnding, tagEnd));
+                            XAttribute.Generate(context, nameEnding, tagEnd));
 
                     }
 

@@ -68,13 +68,9 @@ namespace XmlPro.Entities
             return ScopeExtensions.GetText(Texts, index, connector);
         }
 
-        public IEnumerable<string> AsIndented(int maxLevel, Predicate<int> showLevel, bool attrOrderByName, bool showDeclarative, bool showTexts,
-            bool showElements, bool trimText, bool encodeContent, bool encodeAttrName, bool encodeAttrValue, string currentIndent,
-            string moreIndent, string childConnector)
+        public IEnumerable<string> AsStrings([NotNull] PrintConfig config)
         {
-            return Root.AsIndented(maxLevel, showLevel, attrOrderByName,
-                showDeclarative, showTexts, showElements, trimText, encodeContent, encodeAttrName,
-                encodeAttrValue, currentIndent, moreIndent, childConnector);
+            return Root.AsStrings(config ?? ShowAllPrintConfig);
         }
 
         public string InnerText

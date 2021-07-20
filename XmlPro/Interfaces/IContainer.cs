@@ -50,31 +50,5 @@ namespace XmlPro.Interfaces
         /// <param name="connector">Applied only when <c>index</c> is null to join all <c>XText</c> strings together.</param>
         /// <returns>Null if no text nodes contained, or decoded text of either the concerned piece with Non-null index, or joined text as a whole.</returns>
         public string GetText(int? index = null, char connector = '\n');
-
-        /// <summary>
-        /// Internal method to represent the content of this <c>IElement</c> as well-indented strings with all settings.
-        /// </summary>
-        /// <param name="maxLevel">The maximum level of nodes to be shown.</param>
-        /// <param name="showLevel">Predicate to select only specific levels.</param>
-        /// <param name="attrOrderByName"><c>True</c> to sort the attributes of the opening tag, otherwise keep their original orders.</param>
-        /// <param name="showDeclarative"><c>True</c> to show the Declarative nodes (Remark, CDATA, DocType and Declaration).</param>
-        /// <param name="showTexts">True to show the XText objects at their presenting positions, False to hide texts.</param>
-        /// <param name="showElements">True to include contained XElements as indented strings.</param>
-        /// <param name="trimText">True to trim each <c>ITextOnly</c> instance before showing.</param>
-        /// <param name="encodeContent">True to encode the text contents, otherwise show decoded texts that could make output as invalid XML.</param>
-        /// <param name="encodeAttrName">True to encode the attribute names, otherwise show decoded texts that could make output as invalid XML.</param>
-        /// <param name="encodeAttrValue">True to encode the attribute values, otherwise show decoded texts that could make output as invalid XML.</param>
-        /// <param name="currentIndent">The leading string to be appended before the lines.</param>
-        /// <param name="moreIndent">Extra indent to be appended.</param>
-        /// <param name="childConnector">String to connect multiple <c>IElement</c> or <c>ITextOnly</c> instances.</param>
-        /// <returns>Strings representing each <c>XTextBlock</c>, children <c>XElement</c>s, <c>Opening</c> and <c>Closing</c> tags.</returns>
-        public IEnumerable<string> AsIndented(
-            int maxLevel,
-            Predicate<int> showLevel,
-            bool attrOrderByName,
-            bool showDeclarative, bool showTexts, bool showElements,
-            bool trimText,
-            bool encodeContent, bool encodeAttrName, bool encodeAttrValue,
-            string currentIndent, string moreIndent, string childConnector);
     }
 }

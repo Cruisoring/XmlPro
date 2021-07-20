@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,6 +30,13 @@ namespace XmlPro.Interfaces
         /// </summary>
         /// <param name="config">The <c>PrintConfig</c> instance instructing how to serialize.</param>
         /// <returns>The serialized string of the <c>IContained</c> instance.</returns>
-        public string Print(PrintConfig config = null);
+        public string ToStringWith(PrintConfig config = null);
+
+        /// <summary>
+        /// Internal method to represent the content of this <c>IElement</c> as well-indented strings with all settings.
+        /// </summary>
+        /// <param name="config">The <c>PrintConfig</c> to direct the string representation.</param>
+        /// <returns>Strings representing each <c>XTextBlock</c>, children <c>XElement</c>s, <c>Opening</c> and <c>Closing</c> tags.</returns>
+        public IEnumerable<string> AsStrings([NotNull] PrintConfig config);
     }
 }

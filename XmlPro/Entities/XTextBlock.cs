@@ -46,7 +46,7 @@ namespace XmlPro.Entities
             Content = Decode(content);
         }
 
-        public string Print(PrintConfig config = null)
+        public string ToStringWith(PrintConfig config = null)
         {
             config ??= DefaultTextConfig with {PrintAsLevel = Level};
             string text = config.EncodeContent ? Encode(OuterText) : OuterText;
@@ -62,6 +62,20 @@ namespace XmlPro.Entities
             else
             {
                 return $"{indent}{Content.TrimStart()}";
+            }
+        }
+
+        public IEnumerable<string> AsStrings(PrintConfig config)
+        {
+            config ??= DefaultTextConfig;
+            string contextText = config.EncodeContent ? Encode(Content) : Content;
+            if (config.PrintAsLevel == 0)
+            {
+                yield return contextText;
+            }
+            else
+            {
+                yield return PrintConfig.IndentOf(config.PrintAsLevel??Level, config.UnitIndent) + contextText;
             }
         }
 

@@ -22,6 +22,17 @@ namespace XmlPro.Test
             // Console.ReadLine();
         }
 
+        [TestMethod]
+        public void TestXmlDocumentParsingOsis()
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.PreserveWhitespace = false;
+            doc.Load("Data\\biblehebr_osis.xml");
+            XmlNode rootNode = doc.DocumentElement;
+            DisplayNodes(rootNode);
+            // Console.ReadLine();
+        }
+
         private static void DisplayNodes(XmlNode node)
         {
             //Print the node type, node name and node value of the node

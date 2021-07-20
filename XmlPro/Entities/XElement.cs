@@ -34,7 +34,7 @@ namespace XmlPro.Entities
             EncodeAttributeValue = false
         };
 
-        public static IEnumerable<IScope> GetEnumerator([NotNull] char[] context, ParseConfig config = null)
+        public static IEnumerable<IScope> Generate([NotNull] char[] context, ParseConfig config = null)
         {
             config ??= new ParseConfig();
             //Get all settings for parsing
@@ -45,7 +45,7 @@ namespace XmlPro.Entities
                 config.PreserveWhitespace,
                 config.TrimTextNodes);
 
-            IEnumerable<XTag> tags = XTag.GetEnumerator(context, config);
+            IEnumerable<XTag> tags = XTag.Generate(context, config);
             foreach (var tag in tags)
             {
                 if (tag.Begin > tagEnd + 1)
@@ -103,7 +103,7 @@ namespace XmlPro.Entities
             Stack<XTag> unpaired = new Stack<XTag>();
             Stack<(IContainer, IList<IElement>, IList<ITextOnly>)> stack = new Stack<(IContainer, IList<IElement>, IList<ITextOnly>)>();
 
-            IEnumerable<IScope> parts = GetEnumerator(context, config);
+            IEnumerable<IScope> parts = Generate(context, config);
             foreach (var part in parts)
             {
                 if (part is IElement element)
@@ -373,16 +373,26 @@ namespace XmlPro.Entities
             return ScopeExtensions.GetText(Texts, index);
         }
 
-        public IEnumerable<string> AsIndented(
-            int maxLevel,
-            Predicate<int> showLevel,
-            bool attrOrderByName,
-            bool showDeclarative, bool showTexts, bool showElements,
-            bool trimText,
-            bool encodeContent, bool encodeAttrName, bool encodeAttrValue,
-            string currentIndent, string moreIndent, string childConnector)
+        public IEnumerable<string> AsStrings([NotNull] PrintConfig config)
         {
-            bool showThisLevel = showLevel == null || showLevel(Level);
+            var (maxLevel, unitIndent, childConnector, showLevel,
+                    attrOrderByName, showDeclarative, showTexts, showElements, trimText,
+                    encodeContent, encodeAttrName, encodeAttrValue) =
+                (
+                    config.MaxLevelToShow, config.UnitIndent, config.TextConnector,
+                    config.ShowLevel ?? PrintConfig.NoMoreThan(config.MaxLevelToShow),
+                    config.AttributesOrderByName,
+                    config.ShowDeclarative,
+                    config.ShowTexts,
+                    config.ShowElements,
+                    config.TrimTextContent,
+                    config.EncodeContent,
+                    config.EncodeAttributeName,
+                    config.EncodeAttributeValue);
+
+            bool showThisLevel = showLevel(Level);
+            string currentIndent = PrintConfig.IndentOf(Level, unitIndent);
+
             string opening = Opening.AsString(attrOrderByName, encodeAttrName, encodeAttrValue);
             string closing = Closing?.AsString(attrOrderByName, encodeAttrName, encodeAttrValue) ?? "";
             // Stop quickly with simple Elements or Level >= maxLevel as specified in PrintConfig.LevelsToShow
@@ -400,14 +410,14 @@ namespace XmlPro.Entities
             }
 
             //Now Level < maxLevel && Type == ElementType.Compound
-            string childIndent = currentIndent + moreIndent;
-            bool showNextLevel = showLevel == null || showLevel(Level + 1);
+            string childIndent = currentIndent + unitIndent;
+            bool showNextLevel = showLevel(Level + 1);
             // Try to show element as a single line with/without text and break
             if (Elements == null || Elements.Count == 0)
             {
-                if (!showTexts || !showNextLevel || Texts==null || Texts.Count == 0)
+                if (!showTexts || !showNextLevel || Texts == null || Texts.Count == 0)
                 {
-                    if(showThisLevel)
+                    if (showThisLevel)
                     {
                         yield return $"{currentIndent}{opening}{closing}";
                     }
@@ -423,7 +433,7 @@ namespace XmlPro.Entities
             }
 
             //Since no yield break, show element with indented texts/elements
-            if(showThisLevel)
+            if (showThisLevel)
             {
                 yield return $"{currentIndent}{opening}";
             }
@@ -442,9 +452,7 @@ namespace XmlPro.Entities
                 {
                     if (showElements)
                     {
-                        IEnumerable<string> lines = element.AsIndented(maxLevel, showLevel, attrOrderByName,
-                            showDeclarative, showTexts, showElements, trimText, encodeContent, encodeAttrName,
-                            encodeAttrValue, childIndent, moreIndent, childConnector);
+                        IEnumerable<string> lines = element.AsStrings(config);
                         foreach (var line in lines)
                         {
                             yield return line;
@@ -462,42 +470,17 @@ namespace XmlPro.Entities
             }
         }
 
-        public string Print(PrintConfig config = null)
+        public string ToStringWith(PrintConfig config = null)
         {
             config ??= DefaultElementConfig;
-
-            int level = config.PrintAsLevel ?? Level;
-            var (maxLevel, unitIndent, childConnector,
-                    showLevel,
-                    attrOrderByName, 
-                    showDeclarative, showTexts, showElements, trimText,
-                    encodeContent, encodeAttrName,
-                    encodeAttrValue) =
-                (
-                    LevelsToShow: config.MaxLevelToShow, config.UnitIndent, config.TextConnector,
-                    config.ShowLevel ?? PrintConfig.NoMoreThan(config.MaxLevelToShow),
-                    config.AttributesOrderByName, 
-                    config.ShowDeclarative, 
-                    config.ShowTexts,
-                    config.ShowElements, 
-                    config.TrimTextContent,
-                    config.EncodeContent, 
-                    config.EncodeAttributeName, 
-                    config.EncodeAttributeValue);
-        
-            string indent = PrintConfig.IndentOf(level, unitIndent);
-
-            string[] lines = AsIndented(maxLevel, showLevel, attrOrderByName,
-                showDeclarative, showTexts, showElements, trimText,
-                encodeContent, encodeAttrName,
-                encodeAttrValue, indent, unitIndent, childConnector).ToArray();
-            string result = lines.Length==0 ? "" : string.Join(childConnector, lines);
+            var lines = AsStrings(config);
+            string result = string.Join(config.TextConnector, lines);
             return result;
         }
 
         public override string ToString()
         {
-            return Print();
+            return ToStringWith();
         }
     }
 }

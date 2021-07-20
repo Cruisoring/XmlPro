@@ -19,7 +19,7 @@ namespace XmlPro.Test
         public void TestParseNormalTags()
         {
             string testData = File.ReadAllText("Data/Zoo.xml");
-            XTag[] tags = XTag.GetEnumerator(testData.ToCharArray()).ToArray();
+            XTag[] tags = XTag.Generate(testData.ToCharArray()).ToArray();
             tags.ForEach(tag => Console.WriteLine(tag));
         }
 
@@ -27,7 +27,7 @@ namespace XmlPro.Test
         public void TestXmlSpec()
         {
             string testData = File.ReadAllText("Data/XML.xml");
-            XTag[] tags = XTag.GetEnumerator(testData.ToCharArray()).ToArray();
+            XTag[] tags = XTag.Generate(testData.ToCharArray()).ToArray();
             tags.ForEach(tag => Console.WriteLine(tag));
         }
 
@@ -35,14 +35,14 @@ namespace XmlPro.Test
         public void TestDescriptiveTags()
         {
             string sampleTag = "<?xml-stylesheet type=\"text/xsl\" href=\"REC-xml.xsl\"?>";
-            XTag tag = XTag.GetEnumerator(sampleTag.ToCharArray()).First();
+            XTag tag = XTag.Generate(sampleTag.ToCharArray()).First();
             Console.WriteLine(tag.ToString());
             
             sampleTag = @"<!--
 Notes on preparation of the Fifth Edition:
 	
 - Worked from http://www.w3.org/XML/xml-V10-4e-errata -->";
-            tag = XTag.GetEnumerator(sampleTag.ToCharArray()).First();
+            tag = XTag.Generate(sampleTag.ToCharArray()).First();
             Console.WriteLine(tag.Print(XDocument.ShowAllPrintConfig));
         }
 
@@ -50,7 +50,7 @@ Notes on preparation of the Fifth Edition:
         public void TestPrint()
         {
             string sampleTag = "<sample&amp; key&lt;='Tom&apos; book' noValue authors&gt;=\"Eric &amp; Frank\" />";
-            XTag tag = XTag.GetEnumerator(sampleTag.ToCharArray()).First();
+            XTag tag = XTag.Generate(sampleTag.ToCharArray()).First();
             Console.WriteLine(tag.ToString());
             Assert.AreEqual("<sample& sample&=\"Eric & Frank\" sample&=\"Tom' book\" sample& />", 
                 tag.ToString());

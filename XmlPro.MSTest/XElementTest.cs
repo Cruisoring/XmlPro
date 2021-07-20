@@ -20,7 +20,7 @@ namespace XmlPro.MSTest
 
         static void printWithConfig(PrintConfig config)
         {
-            bookNodes.ForEach(node => Console.WriteLine(node.Print(config)));
+            bookNodes.ForEach(node => Console.WriteLine(node.ToStringWith(config)));
         }
 
         static void printSelectiveLevels(PrintConfig template=null, params int[] levels)
@@ -62,7 +62,7 @@ namespace XmlPro.MSTest
         {
             string testData = File.ReadAllText("Data/XML.xml");
             List<IContained> nodes = XElement.Conclude(testData.ToCharArray()).ToList();
-            var nodeTexts = nodes.Select(node => node.ToString()).Where(t => !String.IsNullOrEmpty(t));
+            var nodeTexts = nodes.Select(node => ((Object) node).ToString()).Where(t => !String.IsNullOrEmpty(t));
             nodeTexts.ForEach(Console.WriteLine);
         }
 
@@ -71,7 +71,7 @@ namespace XmlPro.MSTest
         {
             string testData = File.ReadAllText("Data/XML.html");
             IEnumerable<IContained> nodes = XElement.Conclude(testData.ToCharArray());
-            var nodeTexts = nodes.Select(node => node.ToString()).Where(t => !String.IsNullOrEmpty(t));
+            var nodeTexts = nodes.Select(node => ((Object) node).ToString()).Where(t => !String.IsNullOrEmpty(t));
             nodeTexts.ForEach(Console.WriteLine);
         }
 
@@ -124,7 +124,7 @@ namespace XmlPro.MSTest
             // heads.ForEach(node => Console.WriteLine(node.Print(config2)));
 
             IList<IElement> cdatas = root[node => node.GetText(null).Contains("CDATA"), true].ToList();
-            cdatas.ForEach(node => Console.WriteLine(node.Print(config2)));
+            cdatas.ForEach(node => Console.WriteLine(node.ToStringWith(config2)));
         }
         
     }
